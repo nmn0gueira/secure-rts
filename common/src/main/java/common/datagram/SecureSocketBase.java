@@ -67,7 +67,7 @@ class SecureSocketBase {
                     sequenceNumberBytes,
                     data));
         } catch (GeneralSecurityException e) {
-            throw new RuntimeException(e + e.getMessage());
+            throw new RuntimeException(e);
         }
 
         // Set the length of the data in the header

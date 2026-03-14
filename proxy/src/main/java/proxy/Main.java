@@ -31,7 +31,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Main {
-    public static void main(String[] args) throws Exception {
+    static void main(String[] args) throws Exception {
+        if (args.length != 1)
+        {
+            System.out.println("Usage: proxy [<encryption-alg>]");
+            System.out.println("Encryption algorithm defaults to AES-GCM. Available options:");
+            System.out.println("aes - AES-GCM");
+            System.out.println("chacha - ChaCha20-Poly1305");
+            System.out.println("dprg - Custom stream cipher from keystream generation based on AES-CTR");
+            System.exit(-1);
+        }
+
         InputStream inputStream = new FileInputStream("proxy/config.properties");
         if (inputStream == null) {
             System.err.println("Configuration file not found!");
@@ -45,7 +55,7 @@ public class Main {
         SocketAddress inSocketAddress = parseSocketAddress(remote);
         Set<SocketAddress> outSocketAddressSet = Arrays.stream(destinations.split(",")).map(Main::parseSocketAddress).collect(Collectors.toSet());
 
-        SecureDatagramSocket inSocket = new SecureDatagramSocket(inSocketAddress, "chacha");
+        SecureDatagramSocket inSocket = new SecureDatagramSocket(inSocketAddress, args[0]);
         DatagramSocket outSocket = new DatagramSocket();
         byte[] buffer = new byte[4 * 1024];
        

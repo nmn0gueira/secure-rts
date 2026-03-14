@@ -13,31 +13,33 @@ import java.net.*;
 
 public class Main {
 
-	static public void main( String []args ) throws Exception {
-	        if (args.length != 3)
-	        {
-                   System.out.println("Erro, usar: mySend <movie> <ip-multicast-address> <port>");
-	           System.out.println("        or: mySend <movie> <ip-unicast-address> <port>");
-	           System.exit(-1);
-                }
-      
+	static void main(String[] args) throws Exception {
+		if (args.length != 4)
+		{
+			System.out.println("Usage: mySend <movie> <ip-multicast-address> <port> [<encryption-alg>]");
+			System.out.println("Encryption algorithm defaults to AES-GCM. Available options:");
+			System.out.println("aes - AES-GCM");
+			System.out.println("chacha - ChaCha20-Poly1305");
+			System.out.println("dprg - Custom stream cipher from keystream generation based on AES-CTR");
+		   	System.exit(-1);
+		}
 		int size;
 		int csize = 0;
 		int count = 0;
  		long time;
-		DataInputStream g = new DataInputStream( new FileInputStream(args[0]) );
+		DataInputStream g = new DataInputStream(new FileInputStream(args[0]));
 		byte[] buff = new byte[4096];
 
-		SecureDatagramSocket s = new SecureDatagramSocket("chacha");
-		InetSocketAddress addr = new InetSocketAddress( args[1], Integer.parseInt(args[2]));
-		DatagramPacket p = new DatagramPacket(buff, buff.length, addr );
+		SecureDatagramSocket s = new SecureDatagramSocket(args[3]);
+		InetSocketAddress addr = new InetSocketAddress(args[1], Integer.parseInt(args[2]));
+		DatagramPacket p = new DatagramPacket(buff, buff.length, addr);
 		long t0 = System.nanoTime(); // Ref. time 
 		long q0 = 0;
 
 
-	        // Movies are encoded in .dat files, where each
-          	// frame is encoded in a real-time sequence of MP4 frames 
-         	// Somewhat an FFMPEG4 playing scheme .. Dont worry
+		// Movies are encoded in .dat files, where each
+		// frame is encoded in a real-time sequence of MP4 frames
+		// Somewhat an FFMPEG4 playing scheme .. Dont worry
 		
 		// Each frame has:
 		// Short size || Long Timestamp || byte[] EncodedMP4Frame
@@ -49,37 +51,35 @@ public class Main {
 		while ( g.available() > 0 ) {
 		    
 		    size = g.readShort(); // size of the frame
-		    csize=csize+size;
+		    csize = csize + size;
 		    time = g.readLong();  // timestamp of the frame
-			if ( count == 0 ) q0 = time; // ref. time in the stream
+			if (count == 0) q0 = time; // ref. time in the stream
 			count += 1;
-			g.readFully(buff, 0, size );
-			p.setData(buff, 0, size );
+			g.readFully(buff, 0, size);
+			p.setData(buff, 0, size);
 			p.setSocketAddress( addr );
 
 			long t = System.nanoTime(); // what time is it?
 
 			// Decision about the right time to transmit
-			Thread.sleep( Math.max(0, ((time-q0)-(t-t0))/1000000));
+			Thread.sleep(Math.max(0, ((time - q0) - (t - t0)) / 1000000));
 		   
-		        // send datagram (udp packet) w/ payload frame)
+			// send datagram (udp packet) w/ payload frame)
 			// Frames sent in clear (no encryption)
-
 			s.send(p); 
 
-	           	// Just for awareness ... (debug)
-
+			// Just for awareness ... (debug)
 			System.out.print( ":" );
 		}
 
 		long tend = System.nanoTime(); // "The end" time 
-                System.out.println();
+		System.out.println();
 		System.out.println("DONE! all frames sent: "+ count);
 
 		long duration=(tend-t0)/1000000000;
 		System.out.println("Movie duration "+ duration + " s");
 		System.out.println("Throughput "+ count/duration + " fps");
-     	        System.out.println("Throughput "+ (8*(csize)/duration)/1000 + " Kbps");
+		System.out.println("Throughput "+ (8L * (csize) / duration) / 1000 + " Kbps");
 
 	}
 }

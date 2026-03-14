@@ -46,12 +46,12 @@ public class ChaCha20Poly1305Cipher implements SymmetricCipher {
     }
 
     @Override
-    public byte[] decrypt(byte[] encryptedData) throws GeneralSecurityException {
+    public byte[] decrypt(byte[] data) throws GeneralSecurityException {
         byte[] nonce = new byte[NONCE_SIZE_BYTES];
-        System.arraycopy(encryptedData, 0, nonce, 0, nonce.length);
+        System.arraycopy(data, 0, nonce, 0, nonce.length);
 
-        byte[] ciphertext = new byte[encryptedData.length - nonce.length];
-        System.arraycopy(encryptedData, nonce.length, ciphertext, 0, ciphertext.length);
+        byte[] ciphertext = new byte[data.length - nonce.length];
+        System.arraycopy(data, nonce.length, ciphertext, 0, ciphertext.length);
         cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(nonce));
 
         return cipher.doFinal(ciphertext);
