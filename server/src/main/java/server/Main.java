@@ -6,6 +6,8 @@ package server;
 * for clients to play in real time the transmitted movies
 */
 
+import common.datagram.SecureDatagramSocket;
+
 import java.io.*;
 import java.net.*;
 
@@ -26,7 +28,7 @@ public class Main {
 		DataInputStream g = new DataInputStream( new FileInputStream(args[0]) );
 		byte[] buff = new byte[4096];
 
-		DatagramSocket s = new DatagramSocket();
+		SecureDatagramSocket s = new SecureDatagramSocket("chacha");
 		InetSocketAddress addr = new InetSocketAddress( args[1], Integer.parseInt(args[2]));
 		DatagramPacket p = new DatagramPacket(buff, buff.length, addr );
 		long t0 = System.nanoTime(); // Ref. time 

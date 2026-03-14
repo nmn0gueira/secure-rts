@@ -17,6 +17,8 @@ package proxy;
  *       Both configurable in the file config.properties
  */
 
+import common.datagram.SecureDatagramSocket;
+
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.DatagramPacket;
@@ -43,7 +45,7 @@ public class Main {
         SocketAddress inSocketAddress = parseSocketAddress(remote);
         Set<SocketAddress> outSocketAddressSet = Arrays.stream(destinations.split(",")).map(Main::parseSocketAddress).collect(Collectors.toSet());
 
-        DatagramSocket inSocket = new DatagramSocket(inSocketAddress);
+        SecureDatagramSocket inSocket = new SecureDatagramSocket(inSocketAddress, "chacha");
         DatagramSocket outSocket = new DatagramSocket();
         byte[] buffer = new byte[4 * 1024];
        
