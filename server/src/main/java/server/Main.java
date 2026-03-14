@@ -1,3 +1,5 @@
+package server;
+
 /*
 * hjStreamServer.java 
 * Streaming server: streams video frames in UDP packets
@@ -7,7 +9,7 @@
 import java.io.*;
 import java.net.*;
 
-class Server {
+public class Main {
 
 	static public void main( String []args ) throws Exception {
 	        if (args.length != 3)
