@@ -12,11 +12,11 @@ public class Main {
     static void main(String[] args) throws Exception {
         if (args.length != 3) {
             System.out.println("Usage: server <movie> <ip-multicast-address> <port>");
-            System.out.println("Crypto config is read from server/config.properties");
+            System.out.println("Crypto config is read from server/crypto.properties");
             System.exit(-1);
         }
 
-        CipherSuite suite = CipherSuiteFactory.fromFile("server/config.properties");
+        CipherSuite suite = CipherSuiteFactory.fromFile("server/crypto.properties");
 
         int size;
         int csize = 0;

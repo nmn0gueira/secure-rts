@@ -27,7 +27,7 @@ public class Main {
                 .map(Main::parseSocketAddress)
                 .collect(Collectors.toSet());
 
-        CipherSuite suite = CipherSuiteFactory.fromFile("proxy/config.properties");
+        CipherSuite suite = CipherSuiteFactory.fromFile("proxy/crypto.properties");
 
         SecureDatagramSocket inSocket = new SecureDatagramSocket(inSocketAddress, suite);
         DatagramSocket outSocket = new DatagramSocket();
