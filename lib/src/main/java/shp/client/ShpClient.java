@@ -3,42 +3,60 @@ package shp.client;
 import shp.AbstractShpPeer;
 import shp.ShpCryptoSpec;
 import shp.ShpMessage;
+import shp.protocol.ShpClientProtocol;
+import shp.protocol.ShpProtocolResult;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.security.PublicKey;
 
-public abstract class ShpClient extends AbstractShpPeer {
+public class ShpClient extends AbstractShpPeer {
 
     private final String serverHost;
     private final int serverPort;
     private final String keyStorePath;
     private final String serverPublicKeyPath;
 
-    protected ShpCryptoSpec cryptoSpec;
+    private ShpClientProtocol protocol;
     private Socket socket;
 
-    protected ShpClient(String serverHost, int serverPort, String keyStorePath, String serverPublicKeyPath) {
+    public ShpClient(String serverHost, int serverPort, String keyStorePath, String serverPublicKeyPath) {
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.keyStorePath = keyStorePath;
         this.serverPublicKeyPath = serverPublicKeyPath;
     }
 
-    public ShpClientOutput runProtocolClient() throws Exception {
+    public ShpClientOutput runProtocolClient(String userId, byte[] passwordDigest,
+                                              String request, byte[] udpPortBytes) throws Exception {
         setupConnection();
         try {
-            cryptoSpec = new ShpCryptoSpec();
-            ShpMessage initial = buildInitialMessage();
+            ShpCryptoSpec cryptoSpec = new ShpCryptoSpec();
+            PublicKey serverPublicKey = ShpCryptoSpec.loadPublicKeyFromFile(serverPublicKeyPath);
+            protocol = new ShpClientProtocol(cryptoSpec, serverPublicKey);
+            protocol.setInput(userId, passwordDigest, request, udpPortBytes);
+
+            ShpMessage initial = protocol.buildClientHello();
             sendMessage(initial);
             startReaderThread();
             ShpMessage response = receiveMessage();
             if (response == null) throw new RuntimeException("SHP timeout on initial server response");
             runProtocol(response);
-            return buildOutput();
+            return new ShpClientOutput(protocol.getCryptoConfig(), protocol.getSharedSecret());
         } finally {
             closeConnection();
         }
+    }
+
+    @Override
+    protected ShpProtocolResult dispatch(ShpMessage message) throws Exception {
+        return protocol.handle(message);
+    }
+
+    @Override
+    public boolean isConnectionClosed() {
+        return socket == null || socket.isClosed();
     }
 
     private void setupConnection() throws Exception {
@@ -53,21 +71,4 @@ public abstract class ShpClient extends AbstractShpPeer {
             if (socket != null) socket.close();
         } catch (Exception ignored) {}
     }
-
-    @Override
-    public boolean isConnectionClosed() {
-        return socket == null || socket.isClosed();
-    }
-
-    protected String getKeyStorePath() {
-        return keyStorePath;
-    }
-
-    protected String getServerPublicKeyPath() {
-        return serverPublicKeyPath;
-    }
-
-    protected abstract ShpMessage buildInitialMessage() throws Exception;
-
-    protected abstract ShpClientOutput buildOutput();
 }

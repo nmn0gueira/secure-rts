@@ -54,9 +54,13 @@ public class ShpClientProtocol {
         this.hmac = CipherSuiteFactory.hmacSha256(passwordDigest);
     }
 
-    /*public ShpMessage buildType1() {
-        return new ShpMessage(makeHeader(MsgType.TYPE_1), userId.getBytes());
-    }*/
+    public ShpMessage buildClientHello() {
+        throw new UnsupportedOperationException("buildClientHello() not yet implemented");
+    }
+
+    public ShpProtocolResult handle(ShpMessage message) {
+        throw new UnsupportedOperationException("handle() not yet implemented");
+    }
 
     public String getCryptoConfig() { return cryptoConfig; }
     public byte[] getSharedSecret() { return sharedSecret; }

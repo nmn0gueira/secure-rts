@@ -10,6 +10,7 @@ import shp.server.User;
 
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import java.security.KeyPair;
 import java.security.PublicKey;
 import java.util.HashSet;
 import java.util.Map;
@@ -26,6 +27,8 @@ public class ShpServerProtocol {
     private final ShpCryptoSpec cryptoSpec;
     private final Map<String, User> userDatabase;
     private final Set<String> validRequests;
+
+    private KeyPair serverKeyPair;
 
     private User currentUser;
     private IntegrityCheck hmac;
@@ -45,8 +48,16 @@ public class ShpServerProtocol {
         this.validRequests = validRequests;
     }
 
+    public void setServerKeyPair(KeyPair serverKeyPair) {
+        this.serverKeyPair = serverKeyPair;
+    }
+
     public void setCryptoConfigBytes(byte[] cryptoConfigBytes) {
         this.cryptoConfigBytes = cryptoConfigBytes;
+    }
+
+    public ShpProtocolResult handle(ShpMessage message) {
+        throw new UnsupportedOperationException("handle() not yet implemented");
     }
 
     public String getUserRequest() { return userRequest; }

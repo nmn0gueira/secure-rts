@@ -5,19 +5,24 @@ import crypto.KeyLoader;
 import shp.AbstractShpPeer;
 import shp.ShpCryptoSpec;
 import shp.ShpMessage;
+import shp.protocol.ShpProtocolResult;
+import shp.protocol.ShpServerProtocol;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-public abstract class ShpServer extends AbstractShpPeer {
+public class ShpServer extends AbstractShpPeer {
 
     static {
         if (Security.getProvider("BC") == null) {
@@ -29,25 +34,31 @@ public abstract class ShpServer extends AbstractShpPeer {
     private final String keyStorePath;
     private final String userDatabasePath;
     private final String cryptoConfigPath;
+    private final Set<String> validRequests;
 
-    protected ShpCryptoSpec cryptoSpec;
-    protected KeyPair serverKeyPair;
-    protected Map<String, User> userDatabase;
-
+    private ShpServerProtocol protocol;
     private ServerSocket serverSocket;
     private Socket clientSocket;
 
-    protected ShpServer(int listenPort, String keyStorePath, String userDatabasePath, String cryptoConfigPath) {
+    public ShpServer(int listenPort, String keyStorePath, String userDatabasePath,
+                     String cryptoConfigPath, Set<String> validRequests) {
         this.listenPort = listenPort;
         this.keyStorePath = keyStorePath;
         this.userDatabasePath = userDatabasePath;
         this.cryptoConfigPath = cryptoConfigPath;
+        this.validRequests = validRequests;
     }
 
     public ShpServerOutput runProtocolServer() throws Exception {
-        cryptoSpec = new ShpCryptoSpec();
-        serverKeyPair = loadServerKeyPair();
-        userDatabase = loadUserDatabase(userDatabasePath);
+        ShpCryptoSpec cryptoSpec = new ShpCryptoSpec();
+        KeyPair serverKeyPair = loadServerKeyPair();
+        Map<String, User> userDatabase = loadUserDatabase(userDatabasePath);
+        byte[] cryptoConfigBytes = Files.readAllBytes(Path.of(cryptoConfigPath));
+
+        protocol = new ShpServerProtocol(cryptoSpec, userDatabase, validRequests);
+        protocol.setServerKeyPair(serverKeyPair);
+        protocol.setCryptoConfigBytes(cryptoConfigBytes);
+
         startListening();
         acceptClientConnection();
         try {
@@ -55,10 +66,24 @@ public abstract class ShpServer extends AbstractShpPeer {
             ShpMessage first = receiveMessage();
             if (first == null) throw new RuntimeException("SHP timeout waiting for client first message");
             runProtocol(first);
-            return buildOutput();
+            return new ShpServerOutput(
+                    protocol.getUserRequest(),
+                    protocol.getUdpPort(),
+                    new String(cryptoConfigBytes),
+                    protocol.getSharedSecret());
         } finally {
             closeConnection();
         }
+    }
+
+    @Override
+    protected ShpProtocolResult dispatch(ShpMessage message) throws Exception {
+        return protocol.handle(message);
+    }
+
+    @Override
+    public boolean isConnectionClosed() {
+        return clientSocket == null || clientSocket.isClosed();
     }
 
     private void startListening() throws IOException {
@@ -81,17 +106,12 @@ public abstract class ShpServer extends AbstractShpPeer {
         } catch (Exception ignored) {}
     }
 
-    @Override
-    public boolean isConnectionClosed() {
-        return clientSocket == null || clientSocket.isClosed();
-    }
-
     private KeyPair loadServerKeyPair() throws Exception {
         KeyFactory kf = KeyFactory.getInstance("EC", "BC");
         return KeyLoader.loadKeyPairFromFile(keyStorePath, kf);
     }
 
-    protected Map<String, User> loadUserDatabase(String path) throws Exception {
+    private Map<String, User> loadUserDatabase(String path) throws Exception {
         Map<String, User> db = new HashMap<>();
         KeyFactory kf = KeyFactory.getInstance("EC", "BC");
         try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
@@ -99,7 +119,6 @@ public abstract class ShpServer extends AbstractShpPeer {
             while ((line = reader.readLine()) != null) {
                 String trimmed = line.trim();
                 if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
-                // Format: userId:passwordHashHex:saltHex:publicKeyHex
                 String[] parts = trimmed.split(":");
                 if (parts.length < 4) continue;
                 String userId = parts[0].trim();
@@ -112,10 +131,4 @@ public abstract class ShpServer extends AbstractShpPeer {
         }
         return db;
     }
-
-    protected String getCryptoConfigPath() {
-        return cryptoConfigPath;
-    }
-
-    protected abstract ShpServerOutput buildOutput();
 }
