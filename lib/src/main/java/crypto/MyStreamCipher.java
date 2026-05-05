@@ -1,35 +1,25 @@
-package common.crypto;
+package crypto;
 
 import common.Utils;
+import crypto.prng.AesCtrKeystreamGenerator;
 
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;
-import java.security.NoSuchAlgorithmException;
 
-public class AesGcmCipher implements SymmetricCipher{
+public class MyStreamCipher implements SymmetricCipher {
 
     private static final int TAG_SIZE_BYTES = 16;
     private static final int TAG_SIZE_BITS = TAG_SIZE_BYTES * 8;
     private static final int NONCE_SIZE_BYTES = 12;
 
-    private final Cipher cipher;
-    private final SecretKeySpec keySpec;
+    private final AesCtrKeystreamGenerator keyStream;
 
-    public AesGcmCipher() {
+    public MyStreamCipher() {
         byte[] key =  "0123456789abcdef".getBytes();
         this(key);
     }
 
-    public AesGcmCipher(byte[] key) {
-        try {
-            cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
-            throw new RuntimeException(e);
-        }
-        this.keySpec = new SecretKeySpec(key, "AES");
+    public MyStreamCipher(byte[] key) {
+        this.keyStream = new AesCtrKeystreamGenerator(key);
     }
 
 
@@ -38,10 +28,13 @@ public class AesGcmCipher implements SymmetricCipher{
         byte[] nonce = new byte[NONCE_SIZE_BYTES];
         Utils.SECURE_RANDOM.nextBytes(nonce);
 
-        GCMParameterSpec spec = new GCMParameterSpec(TAG_SIZE_BITS, nonce);
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, spec);
+        byte[] key = keyStream.evaluate(nonce, data.length);
+        byte[] ciphertext = new byte[data.length];
 
-        byte[] ciphertext = cipher.doFinal(data);
+        for (int i = 0; i < data.length; i++) {
+            ciphertext[i] = (byte) (key[i] ^ data[i]);
+        }
+
         byte[] combined = new byte[nonce.length + ciphertext.length];
         System.arraycopy(nonce, 0, combined, 0, nonce.length);
         System.arraycopy(ciphertext, 0, combined, nonce.length, ciphertext.length);
@@ -55,8 +48,14 @@ public class AesGcmCipher implements SymmetricCipher{
 
         byte[] ciphertext = new byte[data.length - nonce.length];
         System.arraycopy(data, nonce.length, ciphertext, 0, ciphertext.length);
-        cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(TAG_SIZE_BITS, nonce));
 
-        return cipher.doFinal(ciphertext);
+        byte[] key = keyStream.evaluate(nonce, ciphertext.length);
+        byte[] decrypted = new byte[ciphertext.length];
+
+        for (int i = 0; i < ciphertext.length; i++) {
+            decrypted[i] = (byte) (key[i] ^ ciphertext[i]);
+        }
+
+        return decrypted;
     }
 }

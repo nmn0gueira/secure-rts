@@ -1,4 +1,4 @@
-package common.crypto;
+package crypto;
 
 import common.Utils;
 

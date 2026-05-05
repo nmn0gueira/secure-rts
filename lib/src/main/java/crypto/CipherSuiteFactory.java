@@ -1,0 +1,134 @@
+package crypto;
+
+import common.Utils;
+
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.PBEParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.security.*;
+import java.util.Map;
+
+public class CipherSuiteFactory {
+
+    static {
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    }
+
+    /**
+     * Build a CipherSuite from a config file. Crypto keys are read directly from the file as hex strings.
+     * Config format (one entry per line, colon-separated):
+     *   CONFIDENTIALITY: &lt;JCE cipher string or DPRG&gt;
+     *   SYMMETRIC_KEY:   &lt;hex key&gt;
+     *   IV:              &lt;hex iv&gt;   (optional, for non-AEAD ciphers)
+     *   INTEGRITY:       NULL | MAC | H
+     *   MAC:             &lt;MAC algorithm&gt;
+     *   MAC_KEY:         &lt;hex key&gt;
+     *   H:               &lt;hash algorithm&gt;
+     */
+    public static CipherSuite fromFile(String configPath) {
+        Map<String, String> config = CryptoConfigParser.parseFile(configPath);
+        return buildFromMap(config, null, new SecureRandom());
+    }
+
+    /**
+     * Build a CipherSuite from an inline config string with a shared secret for key derivation.
+     */
+    public static CipherSuite fromConfig(String config, byte[] sharedSecret) {
+        Map<String, String> map = CryptoConfigParser.parseString(config);
+        return buildFromMap(map, sharedSecret, new SecureRandom());
+    }
+
+    public static SymmetricCipher sharedKeyCipher(byte[] key) {
+        try {
+            SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+            byte[] iv = new byte[16];
+            System.arraycopy(key, 0, iv, 0, Math.min(key.length, 16));
+            javax.crypto.spec.IvParameterSpec ivSpec = new javax.crypto.spec.IvParameterSpec(iv);
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            return new SymmetricCipher() {
+                @Override
+                public byte[] encrypt(byte[] data) throws GeneralSecurityException {
+                    cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                    return cipher.doFinal(data);
+                }
+                @Override
+                public byte[] decrypt(byte[] encryptedData) throws GeneralSecurityException {
+                    cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                    return cipher.doFinal(encryptedData);
+                }
+            };
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static IntegrityCheck hmacSha256(byte[] key) throws GeneralSecurityException {
+        javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(key, "HmacSHA256"));
+        return new IntegrityCheck() {
+            @Override
+            public byte[] createIntegrityProof(byte[] data, byte[] nonce) throws GeneralSecurityException {
+                mac.update(data);
+                return mac.doFinal();
+            }
+            @Override
+            public int getIntegrityProofSize() { return mac.getMacLength(); }
+            @Override
+            public boolean isMac() { return true; }
+        };
+    }
+
+    private static CipherSuite buildFromMap(Map<String, String> config, byte[] sharedSecret, SecureRandom random) {
+        SymmetricCipher cipher = null;
+        IntegrityCheck integrityCheck = null;
+
+        String cipherAlgo = config.get("CONFIDENTIALITY");
+        if (cipherAlgo != null) {
+            try {
+                if ("DPRG".equalsIgnoreCase(cipherAlgo)) {
+                    byte[] keyBytes;
+                    if (sharedSecret != null) {
+                        keyBytes = Utils.subArray(HashUtils.SHA3_512.digest(sharedSecret), 0, 16);
+                    } else {
+                        keyBytes = Utils.hexStringToByteArray(config.get("SYMMETRIC_KEY"));
+                    }
+                    cipher = new MyStreamCipher(keyBytes);
+                } else {
+                    if (sharedSecret != null) {
+                        cipher = new ConfigurableCipher(cipherAlgo, sharedSecret, random);
+                    } else {
+                        String key = config.get("SYMMETRIC_KEY");
+                        String iv = config.get("IV");
+                        cipher = new ConfigurableCipher(cipherAlgo, key, iv, random);
+                    }
+                }
+            } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        String integrityType = config.get("INTEGRITY");
+        if (integrityType != null) {
+            boolean isMac = !integrityType.equals("H");
+            String hashAlgo = config.get("H");
+            String macAlgo = config.get("MAC");
+            try {
+                if (sharedSecret != null) {
+                    integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, sharedSecret);
+                } else {
+                    String macKey = config.get("MAC_KEY");
+                    integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, macKey);
+                }
+            } catch (GeneralSecurityException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return new CipherSuite(cipher, integrityCheck);
+    }
+}

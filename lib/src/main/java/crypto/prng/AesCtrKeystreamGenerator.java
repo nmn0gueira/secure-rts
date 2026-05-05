@@ -5,7 +5,7 @@
  */
 
 
-package common.crypto.prng;
+package crypto.prng;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
