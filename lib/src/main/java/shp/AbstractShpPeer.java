@@ -18,10 +18,9 @@ public abstract class AbstractShpPeer {
     protected ObjectOutputStream outputStream;
 
     private final BlockingQueue<Object> messageQueue = new LinkedBlockingQueue<>();
-    private Thread readerThread;
 
     protected void startReaderThread() {
-        readerThread = new Thread(() -> {
+        Thread readerThread = new Thread(() -> {
             try {
                 while (!isConnectionClosed()) {
                     Object obj = inputStream.readObject();
