@@ -29,14 +29,46 @@ class CryptoConfigParser {
 
     private static void parseLine(String line, Map<String, String> result) {
         String trimmed = line.trim();
-        if (trimmed.isEmpty() || trimmed.startsWith("#")) return;
 
-        String[] parts = trimmed.split(":");
+        if (trimmed.isEmpty()
+        //TODO: Ignore comments and XML-like tags?? Enunciado pag. 25-26 pff confirmar.
+        || trimmed.startsWith("#")
+        || trimmed.startsWith("//")
+        || (trimmed.startsWith("<") && trimmed.endsWith(">"))
+        ) return;
+        
+        String[] parts = trimmed.split(":",2);
+
         if (parts.length != 2) return;
-        String key = parts[0].trim();
+
+        String key = normalizeKey(parts[0].trim());
         String value = parts[1].trim();
-        if (!value.equals("NULL")) {
-            result.put(key, value);
-        }
+        
+        result.put(key, value);
     }
+
+    /**
+     * Normalizes a key by trimming whitespace, converting to lowercase, and replacing hyphens and spaces with underscores.
+     * Essential for allowing the new vocabulary of this assignment to work with the old config files that expect another vocabulary.
+     * @param key the key to normalize
+     * @return the normalized key
+     */
+    private static String normalizeKey(String key) {
+        String normalized = key.trim()
+                .toLowerCase()
+                .replace("-", "_")
+                .replace(" ", "_");
+
+        return switch (normalized) {
+            case "ciphersuite", "confidentiality" -> "CONFIDENTIALITY";
+            case "key", "symmetric_key" -> "SYMMETRIC_KEY";
+            case "iv" -> "IV";
+            case "integrity" -> "INTEGRITY";
+            case "hmac", "mac" -> "MAC";
+            case "mackey", "mac_key" -> "MAC_KEY";
+            case "h", "hash" -> "H";
+            default -> key.trim().toUpperCase();
+        };
+    }
+
 }
