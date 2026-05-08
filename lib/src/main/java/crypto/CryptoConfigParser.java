@@ -31,7 +31,6 @@ class CryptoConfigParser {
         String trimmed = line.trim();
 
         if (trimmed.isEmpty()
-        //TODO: Ignore comments and XML-like tags?? Enunciado pag. 25-26 pff confirmar.
         || trimmed.startsWith("#")
         || trimmed.startsWith("//")
         || (trimmed.startsWith("<") && trimmed.endsWith(">"))
@@ -47,12 +46,6 @@ class CryptoConfigParser {
         result.put(key, value);
     }
 
-    /**
-     * Normalizes a key by trimming whitespace, converting to lowercase, and replacing hyphens and spaces with underscores.
-     * Essential for allowing the new vocabulary of this assignment to work with the old config files that expect another vocabulary.
-     * @param key the key to normalize
-     * @return the normalized key
-     */
     private static String normalizeKey(String key) {
         String normalized = key.trim()
                 .toLowerCase()

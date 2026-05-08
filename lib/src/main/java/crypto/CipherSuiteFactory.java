@@ -84,11 +84,12 @@ public class CipherSuiteFactory {
     }
 
     private static CipherSuite buildFromMap(Map<String, String> config, byte[] sharedSecret, SecureRandom random) {
+
         SymmetricCipher cipher = null;
         IntegrityCheck integrityCheck = null;
 
         String cipherAlgo = config.get("CONFIDENTIALITY");
-        if (cipherAlgo != null) {
+        if (!isNullValue(cipherAlgo)) {
             try {
                 if ("DPRG".equalsIgnoreCase(cipherAlgo)) {
                     byte[] keyBytes;
@@ -113,15 +114,49 @@ public class CipherSuiteFactory {
         }
 
         String integrityType = config.get("INTEGRITY");
-        if (integrityType != null) {
-            boolean isMac = !integrityType.equals("H");
-            String hashAlgo = config.get("H");
-            String macAlgo = config.get("MAC");
+        String hashAlgo = config.get("H");
+        String macAlgo = config.get("MAC");
+        String macKey = config.get("MAC_KEY");
+
+        if (isNullValue(hashAlgo)) {
+            hashAlgo = null;
+        }
+
+        if (isNullValue(macAlgo)) {
+            macAlgo = null;
+        }
+
+        if (isNullValue(macKey)) {
+            macKey = null;
+        }
+
+        if (integrityType == null) {
+            if (macAlgo != null || macKey != null) {
+                integrityType = "MAC";
+            } else if (hashAlgo != null) {
+                integrityType = "H";
+            }
+        }
+
+        if (!isNullValue(integrityType)) {
+            boolean isMac = !integrityType.equalsIgnoreCase("H");
+
+            if (isMac && macAlgo == null) {
+                throw new IllegalArgumentException("MAC integrity requires MAC algorithm");
+            }
+
+            if (isMac && sharedSecret == null && macKey == null) {
+                throw new IllegalArgumentException("MAC integrity requires MAC_KEY when no shared secret is provided");
+            }
+
+            if (!isMac && hashAlgo == null) {
+                throw new IllegalArgumentException("Hash integrity requires H/hash algorithm");
+            }
+
             try {
                 if (sharedSecret != null) {
                     integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, sharedSecret);
                 } else {
-                    String macKey = config.get("MAC_KEY");
                     integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, macKey);
                 }
             } catch (GeneralSecurityException e) {
@@ -131,4 +166,9 @@ public class CipherSuiteFactory {
 
         return new CipherSuite(cipher, integrityCheck);
     }
+
+    private static boolean isNullValue(String value) {
+        return value == null || value.trim().equalsIgnoreCase("NULL");
+    }
+
 }
