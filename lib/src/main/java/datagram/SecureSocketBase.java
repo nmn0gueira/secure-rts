@@ -15,8 +15,9 @@ import java.util.logging.Logger;
 class SecureSocketBase {
 
     protected static final int UDP_MAX_SIZE = 65507;
-    private static final short DSTP_VERSION = 0x0002;
-    private static final byte DSTP_RELEASE = 0x01;
+    private static final short RTSSP_VERSION = 0x0002;
+    private static final byte RTSSP_CONTENT_TYPE_APPLICATION_DATA = 0x17;
+    private static final int RTSSP_HEADER_SIZE = 5;
 
     private final CipherSuite suite;
     private long timestamp;
@@ -25,8 +26,11 @@ class SecureSocketBase {
     private static final Logger LOGGER = Logger.getLogger(SecureSocketBase.class.getName());
 
     private final byte[] header = new byte[]{
-            (byte) (DSTP_VERSION >> 8), (byte) DSTP_VERSION, DSTP_RELEASE,
-            0x00, 0x00
+            RTSSP_CONTENT_TYPE_APPLICATION_DATA,
+            (byte) (RTSSP_VERSION >> 8),
+            (byte) RTSSP_VERSION,
+            0x00,
+            0x00
     };
 
     protected SecureSocketBase(CipherSuite suite) {
@@ -36,13 +40,6 @@ class SecureSocketBase {
         LOGGER.setLevel(Level.OFF);
     }
 
-    /**
-     * Wraps the datagram payload in a DSTP packet. Layout depends on the cipher suite:
-     *   AEAD (no separate integrity):  header || encrypt(seqNum || data)
-     *   MAC  (integrity outside):      header || ciphertext || mac(ciphertext)
-     *   Hash (integrity inside):       header || encrypt(seqNum || data || hash)
-     *
-     */
     protected void preparePacketForSend(DatagramPacket packet) {
         try {
             byte[] seqNumBytes = new byte[]{(byte) timestamp, (byte) sequenceNumber};
@@ -52,14 +49,14 @@ class SecureSocketBase {
             if (sequenceNumber == 256) { sequenceNumber = 0; timestamp++; }
 
             byte[] payload;
-            if (!suite.hasIntegrityCheck()) { // (Generally), if we are using an AEAD cipher
+            if (!suite.hasIntegrityCheck()) {
                 payload = suite.cipher().encrypt(Utils.concat(seqNumBytes, data));
-            } else if (suite.usesMac()) { // MAC, over the ciphertext
+            } else if (suite.usesMac()) {
                 byte[] ciphertext = suite.cipher().encrypt(Utils.concat(seqNumBytes, data));
                 byte[] nonce = Utils.subArray(ciphertext, 0, Math.min(12, ciphertext.length));
                 byte[] proof = suite.integrityCheck().createIntegrityProof(ciphertext, nonce);
                 payload = Utils.concat(ciphertext, proof);
-            } else { // Hash included inside the ciphertext
+            } else {
                 byte[] proof = suite.integrityCheck().createIntegrityProof(data, seqNumBytes);
                 payload = suite.cipher().encrypt(Utils.concat(seqNumBytes, data, proof));
             }
@@ -72,23 +69,41 @@ class SecureSocketBase {
         }
     }
 
-    /**
-     * Decrypts and validates a received DSTP packet. Returns false (and discards) if the
-     * packet fails authentication or has a duplicate sequence number.
-     */
     protected boolean processReceivedPacket(DatagramPacket packet) {
         byte[] data = packet.getData();
+        
+        if (packet.getLength() < RTSSP_HEADER_SIZE) {
+            LOGGER.warning("RTSSP packet too short");
+            return false;
+        }
+
+        if (data[0] != RTSSP_CONTENT_TYPE_APPLICATION_DATA) {
+            LOGGER.warning("Invalid RTSSP content type.");
+            return false;
+        }
+
+        short version = (short) (((data[1] & 0xFF) << 8) | (data[2] & 0xFF));
+        if (version != RTSSP_VERSION) {
+            LOGGER.warning("Unsupported RTSSP version.");
+            return false;
+        }
+
         int payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
-        byte[] payload = Utils.subArray(data, header.length, header.length + payloadLength);
+        if (payloadLength != packet.getLength() - RTSSP_HEADER_SIZE) {
+            LOGGER.warning("Invalid RTSSP payload length");
+            return false;
+        }
+
+        byte[] payload = Utils.subArray(data, RTSSP_HEADER_SIZE, RTSSP_HEADER_SIZE + payloadLength);
 
         byte[] decryptedData;
         byte[] receivedMessage;
 
         try {
-            if (!suite.hasIntegrityCheck()) { // AEAD: just decrypt; cipher verifies integrity internally
+            if (!suite.hasIntegrityCheck()) {
                 decryptedData = suite.cipher().decrypt(payload);
                 receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length);
-            } else if (suite.usesMac()) { // Verify the MAC over the ciphertext before decrypting
+            } else if (suite.usesMac()) {
                 int macSize = suite.integrityProofSize();
                 byte[] ciphertext = Utils.subArray(payload, 0, payload.length - macSize);
                 byte[] proof = Utils.subArray(payload, payload.length - macSize, payload.length);
@@ -99,7 +114,7 @@ class SecureSocketBase {
                 }
                 decryptedData = suite.cipher().decrypt(ciphertext);
                 receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length);
-            } else { // Hash is included at the end of the decrypted plaintext
+            } else {
                 decryptedData = suite.cipher().decrypt(payload);
                 int hashSize = suite.integrityProofSize();
                 receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length - hashSize);
