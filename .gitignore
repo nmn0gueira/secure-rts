@@ -195,3 +195,13 @@ buildNumber.properties
 *.iml
 
 # End of https://www.gitignore.io/api/java,maven,eclipse,intellij
+
+# Generated SHP certificates and stores
+/local/
+*.p12
+*.pfx
+*.jks
+*.crt
+*.cer
+*.pem
+*.key

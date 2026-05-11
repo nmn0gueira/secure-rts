@@ -5,6 +5,15 @@
 mvn clean compile package -DskipTests
 ```
 
+## Generate local SHP certificates
+The generated stores are local artefacts and should not be committed. They are written to `local/shp-stores`.
+
+```
+bash scripts/generate-shp-stores.sh
+```
+
+Use `--force` to regenerate existing stores.
+
 ## Run
 ### Server
 ```
