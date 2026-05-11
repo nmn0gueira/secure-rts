@@ -1,6 +1,5 @@
 package shp;
 
-import crypto.DhKeyAgreement;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -64,16 +63,16 @@ class ShpCryptoSpecTest {
     }
 
     @Test
-    void dhSharedSecretsMatch() throws Exception {
+    void ecdhSharedSecretsMatch() throws Exception {
         var spec1 = new ShpCryptoSpec();
         var spec2 = new ShpCryptoSpec();
 
-        KeyFactory kf = KeyFactory.getInstance("DH", "BC");
-        var dhPub1 = kf.generatePublic(new X509EncodedKeySpec(spec1.getYdhBytes()));
-        var dhPub2 = kf.generatePublic(new X509EncodedKeySpec(spec2.getYdhBytes()));
+        KeyFactory kf = KeyFactory.getInstance("EC", "BC");
+        var pub1 = kf.generatePublic(new X509EncodedKeySpec(spec1.getEcdhPublicKeyBytes()));
+        var pub2 = kf.generatePublic(new X509EncodedKeySpec(spec2.getEcdhPublicKeyBytes()));
 
-        byte[] secret1 = spec1.generateSharedSecret(dhPub2);
-        byte[] secret2 = spec2.generateSharedSecret(dhPub1);
+        byte[] secret1 = spec1.generateSharedSecret(pub2);
+        byte[] secret2 = spec2.generateSharedSecret(pub1);
 
         assertArrayEquals(secret1, secret2);
     }
@@ -107,10 +106,10 @@ class ShpCryptoSpecTest {
     }
 
     @Test
-    void ydhBytesAreNotEmpty() {
+    void ecdhPublicKeyBytesAreNotEmpty() {
         var spec = new ShpCryptoSpec();
-        byte[] ydh = spec.getYdhBytes();
-        assertNotNull(ydh);
-        assertTrue(ydh.length > 0);
+        byte[] ecdh = spec.getEcdhPublicKeyBytes();
+        assertNotNull(ecdh);
+        assertTrue(ecdh.length > 0);
     }
 }

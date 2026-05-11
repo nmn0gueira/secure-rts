@@ -1,6 +1,6 @@
 package shp;
 
-import crypto.DhKeyAgreement;
+import crypto.EcdhKeyAgreement;
 import crypto.EcdsaSignature;
 import crypto.EciesCipher;
 import crypto.KeyLoader;
@@ -30,7 +30,7 @@ public class ShpCryptoSpec {
     private final KeyPair ecKeyPair;
     private final EcdsaSignature ecdsaSignature;
     private final EciesCipher eciesCipher;
-    private final DhKeyAgreement dhKeyAgreement;
+    private final EcdhKeyAgreement ecdhKeyAgreement;
 
     public ShpCryptoSpec() {
         try {
@@ -39,7 +39,7 @@ public class ShpCryptoSpec {
             ecKeyPair = ecGen.generateKeyPair();
             ecdsaSignature = new EcdsaSignature();
             eciesCipher = new EciesCipher();
-            dhKeyAgreement = new DhKeyAgreement();
+            ecdhKeyAgreement = new EcdhKeyAgreement();
         } catch (GeneralSecurityException e) {
             throw new RuntimeException(e);
         }
@@ -61,13 +61,13 @@ public class ShpCryptoSpec {
         return eciesCipher.decrypt(encryptedData, ecKeyPair.getPrivate());
     }
 
-    public byte[] generateSharedSecret(PublicKey peerDhPublicKey) throws InvalidKeyException {
-        dhKeyAgreement.doPhase(peerDhPublicKey);
-        return dhKeyAgreement.generateSecret();
+    public byte[] generateSharedSecret(PublicKey peerEcdhPublicKey) throws InvalidKeyException {
+        ecdhKeyAgreement.doPhase(peerEcdhPublicKey);
+        return ecdhKeyAgreement.generateSecret();
     }
 
-    public byte[] getYdhBytes() {
-        return dhKeyAgreement.getPublicKey().getEncoded();
+    public byte[] getEcdhPublicKeyBytes() {
+        return ecdhKeyAgreement.getPublicKey().getEncoded();
     }
 
     public PublicKey getEcPublicKey() {
