@@ -66,6 +66,37 @@ class CipherSuiteFactoryTest {
     }
 
     @Test
+    void fromConfigAcceptsAssignmentFormatWithHmacNames() throws Exception {
+        String config = "<cars.dat.encrypted>\n"
+                + "ciphersuite: AES/GCM/NoPadding\n"
+                + "key: " + AES_KEY_HEX + "\n"
+                + "hmac: HMACSHA256\n"
+                + "mackey: " + HMAC_KEY_HEX + "\n"
+                + "</cars.dat.encrypted>\n";
+        CipherSuite suite = CipherSuiteFactory.fromConfig(config, null);
+
+        assertNotNull(suite.cipher());
+        assertTrue(suite.hasIntegrityCheck());
+        assertTrue(suite.usesMac());
+        assertEquals(32, suite.integrityProofSize());
+        assertArrayEquals(PLAINTEXT, suite.cipher().decrypt(suite.cipher().encrypt(PLAINTEXT)));
+    }
+
+    @Test
+    void fromConfigAcceptsNullConfidentialityWithHashIntegrity() {
+        String config = "<cars.dat.hash>\n"
+                + "ciphersuite: NULL\n"
+                + "hash: SHA-256\n"
+                + "</cars.dat.hash>\n";
+        CipherSuite suite = CipherSuiteFactory.fromConfig(config, null);
+
+        assertNull(suite.cipher());
+        assertTrue(suite.hasIntegrityCheck());
+        assertFalse(suite.usesMac());
+        assertEquals(32, suite.integrityProofSize());
+    }
+
+    @Test
     void fromConfigWithHashIntegrity() throws Exception {
         String config = "CONFIDENTIALITY:AES/GCM/NoPadding\n"
                 + "SYMMETRIC_KEY:" + AES_KEY_HEX + "\n"

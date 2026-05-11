@@ -106,6 +106,12 @@ class ShpCryptoSpecTest {
     }
 
     @Test
+    void certificateBytesFallbackToPublicKeyWhenNoCertificate() throws Exception {
+        var spec = new ShpCryptoSpec();
+        assertArrayEquals(spec.getEcPublicKeyBytes(), spec.getCertificateBytes());
+    }
+
+    @Test
     void ecdhPublicKeyBytesAreNotEmpty() {
         var spec = new ShpCryptoSpec();
         byte[] ecdh = spec.getEcdhPublicKeyBytes();

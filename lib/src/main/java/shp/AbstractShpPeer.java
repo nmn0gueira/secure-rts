@@ -47,27 +47,27 @@ public abstract class AbstractShpPeer {
 
     protected void runProtocol(ShpMessage firstMessage) throws Exception {
         ShpMessage incoming = firstMessage;
-        while (true) {
+        
+        while (true){
             ShpProtocolResult result = dispatch(incoming);
-            if (result.state() == State.ERROR) {
-                throw new RuntimeException("SHP protocol error");
+
+            if(result.state() == State.ERROR){
+                throw new RuntimeException("SHP protocol error.");
             }
+
+            if (result.response().isPresent()) {
+                sendMessage(result.response().get());
+            }
+
             if (result.state() == State.FINISHED) {
                 break;
             }
-            result.response().ifPresent(msg -> {
-                try {
-                    sendMessage(msg);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            if (result.state() == State.WAITING) {
-                incoming = receiveMessage();
-                if (incoming == null) {
-                    throw new RuntimeException("SHP timeout waiting for peer message");
-                }
+
+            incoming = receiveMessage();
+            if (incoming == null) {
+                throw new RuntimeException("SHP timeout waiting for peer message");
             }
+            
         }
     }
 

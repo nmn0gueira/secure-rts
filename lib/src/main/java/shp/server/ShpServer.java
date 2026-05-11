@@ -1,6 +1,7 @@
 package shp.server;
 
 import common.Utils;
+import crypto.CertificateLoader;
 import crypto.KeyLoader;
 import shp.AbstractShpPeer;
 import shp.ShpCryptoSpec;
@@ -14,7 +15,6 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
-import java.security.KeyPair;
 import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +32,7 @@ public class ShpServer extends AbstractShpPeer {
 
     private final int listenPort;
     private final String keyStorePath;
+    private final String trustStorePath;
     private final String userDatabasePath;
     private final String cryptoConfigPath;
     private final Set<String> validRequests;
@@ -40,23 +41,26 @@ public class ShpServer extends AbstractShpPeer {
     private ServerSocket serverSocket;
     private Socket clientSocket;
 
-    public ShpServer(int listenPort, String keyStorePath, String userDatabasePath,
+    public ShpServer(int listenPort, String keyStorePath, String trustStorePath, String userDatabasePath,
                      String cryptoConfigPath, Set<String> validRequests) {
         this.listenPort = listenPort;
         this.keyStorePath = keyStorePath;
+        this.trustStorePath = trustStorePath;
         this.userDatabasePath = userDatabasePath;
         this.cryptoConfigPath = cryptoConfigPath;
         this.validRequests = validRequests;
     }
 
     public ShpServerOutput runProtocolServer() throws Exception {
-        ShpCryptoSpec cryptoSpec = new ShpCryptoSpec();
-        KeyPair serverKeyPair = loadServerKeyPair();
+        char[] password = "changeit".toCharArray();
+        var identity = CertificateLoader.loadIdentity(keyStorePath, password, null, password);
+        var trustStore = CertificateLoader.loadKeyStore(trustStorePath, password);
+
+        ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.keyPair(), identity.certificate());
         Map<String, User> userDatabase = loadUserDatabase(userDatabasePath);
         byte[] cryptoConfigBytes = Files.readAllBytes(Path.of(cryptoConfigPath));
 
-        protocol = new ShpServerProtocol(cryptoSpec, userDatabase, validRequests);
-        protocol.setServerKeyPair(serverKeyPair);
+        protocol = new ShpServerProtocol(cryptoSpec, trustStore, userDatabase, validRequests);
         protocol.setCryptoConfigBytes(cryptoConfigBytes);
 
         startListening();
@@ -104,11 +108,6 @@ public class ShpServer extends AbstractShpPeer {
         try {
             if (serverSocket != null) serverSocket.close();
         } catch (Exception ignored) {}
-    }
-
-    private KeyPair loadServerKeyPair() throws Exception {
-        KeyFactory kf = KeyFactory.getInstance("EC", "BC");
-        return KeyLoader.loadKeyPairFromFile(keyStorePath, kf);
     }
 
     private Map<String, User> loadUserDatabase(String path) throws Exception {

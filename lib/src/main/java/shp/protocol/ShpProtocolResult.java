@@ -21,4 +21,9 @@ public record ShpProtocolResult(Optional<ShpMessage> response, State state) {
     public static ShpProtocolResult finished() {
         return new ShpProtocolResult(Optional.empty(), State.FINISHED);
     }
+
+    public static ShpProtocolResult finished(ShpMessage message) {
+        return new ShpProtocolResult(Optional.of(message), State.FINISHED);
+    }
+    
 }
