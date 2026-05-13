@@ -4,8 +4,8 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.security.KeyFactory;
-import java.security.Security;
+import java.security.*;
+import java.security.spec.ECGenParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,9 +19,15 @@ class ShpCryptoSpecTest {
         }
     }
 
+    private static ShpCryptoSpec testSpec() throws GeneralSecurityException {
+        KeyPairGenerator gen = KeyPairGenerator.getInstance("EC", "BC");
+        gen.initialize(new ECGenParameterSpec("secp256r1"));
+        return new ShpCryptoSpec(gen.generateKeyPair(), null);
+    }
+
     @Test
     void signAndVerifyWithOwnKey() throws Exception {
-        var spec = new ShpCryptoSpec();
+        var spec = testSpec();
         byte[] data = "data to sign".getBytes();
         byte[] sig = spec.sign(data);
         assertTrue(spec.verifySignature(spec.getEcPublicKey(), data, sig));
@@ -29,15 +35,15 @@ class ShpCryptoSpecTest {
 
     @Test
     void verifyFailsForTamperedData() throws Exception {
-        var spec = new ShpCryptoSpec();
+        var spec = testSpec();
         byte[] sig = spec.sign("original".getBytes());
         assertFalse(spec.verifySignature(spec.getEcPublicKey(), "tampered".getBytes(), sig));
     }
 
     @Test
     void verifyFailsWithWrongPublicKey() throws Exception {
-        var spec1 = new ShpCryptoSpec();
-        var spec2 = new ShpCryptoSpec();
+        var spec1 = testSpec();
+        var spec2 = testSpec();
         byte[] data = "signed by spec1".getBytes();
         byte[] sig = spec1.sign(data);
         assertFalse(spec2.verifySignature(spec2.getEcPublicKey(), data, sig));
@@ -45,7 +51,7 @@ class ShpCryptoSpecTest {
 
     @Test
     void asymmetricEncryptDecryptSameInstance() throws Exception {
-        var spec = new ShpCryptoSpec();
+        var spec = testSpec();
         byte[] plaintext = "ECIES test".getBytes();
         byte[] encrypted = spec.asymmetricEncrypt(plaintext, spec.getEcPublicKey());
         byte[] decrypted = spec.asymmetricDecrypt(encrypted);
@@ -54,8 +60,8 @@ class ShpCryptoSpecTest {
 
     @Test
     void asymmetricEncryptDecryptCrossInstance() throws Exception {
-        var sender = new ShpCryptoSpec();
-        var receiver = new ShpCryptoSpec();
+        var sender = testSpec();
+        var receiver = testSpec();
         byte[] plaintext = "cross-instance ECIES".getBytes();
         byte[] encrypted = sender.asymmetricEncrypt(plaintext, receiver.getEcPublicKey());
         byte[] decrypted = receiver.asymmetricDecrypt(encrypted);
@@ -64,8 +70,8 @@ class ShpCryptoSpecTest {
 
     @Test
     void ecdhSharedSecretsMatch() throws Exception {
-        var spec1 = new ShpCryptoSpec();
-        var spec2 = new ShpCryptoSpec();
+        var spec1 = testSpec();
+        var spec2 = testSpec();
 
         KeyFactory kf = KeyFactory.getInstance("EC", "BC");
         var pub1 = kf.generatePublic(new X509EncodedKeySpec(spec1.getEcdhPublicKeyBytes()));
@@ -91,29 +97,29 @@ class ShpCryptoSpecTest {
 
     @Test
     void loadPublicKeyRoundtrip() throws Exception {
-        var spec = new ShpCryptoSpec();
+        var spec = testSpec();
         byte[] encoded = spec.getEcPublicKeyBytes();
         var loaded = ShpCryptoSpec.loadPublicKey(encoded);
         assertArrayEquals(encoded, loaded.getEncoded());
     }
 
     @Test
-    void ecPublicKeyEncodingIsNotEmpty() {
-        var spec = new ShpCryptoSpec();
+    void ecPublicKeyEncodingIsNotEmpty() throws Exception {
+        var spec = testSpec();
         byte[] encoded = spec.getEcPublicKeyBytes();
         assertNotNull(encoded);
         assertTrue(encoded.length > 0);
     }
 
     @Test
-    void certificateBytesFallbackToPublicKeyWhenNoCertificate() throws Exception {
-        var spec = new ShpCryptoSpec();
-        assertArrayEquals(spec.getEcPublicKeyBytes(), spec.getCertificateBytes());
+    void getCertificateBytesThrowsWhenNoCertificate() throws Exception {
+        var spec = testSpec();
+        assertThrows(IllegalStateException.class, spec::getCertificateBytes);
     }
 
     @Test
-    void ecdhPublicKeyBytesAreNotEmpty() {
-        var spec = new ShpCryptoSpec();
+    void ecdhPublicKeyBytesAreNotEmpty() throws Exception {
+        var spec = testSpec();
         byte[] ecdh = spec.getEcdhPublicKeyBytes();
         assertNotNull(ecdh);
         assertTrue(ecdh.length > 0);

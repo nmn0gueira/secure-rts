@@ -33,10 +33,9 @@ class ShpMessagesTest {
     void serverHelloRoundtrip() {
         ShpServerHello hello = new ShpServerHello(
                 "cars.dat",
-                true,
                 new byte[] { 1, 2 },
                 new byte[] { 3, 4 },
-                "ciphersuite: AES/GCM/NoPadding\nintegrity: NULL",
+                "SHP_AES_256_GCM",
                 new byte[] { 5, 6 },
                 new byte[] { 7, 8 },
                 new byte[] { 9, 10 });
@@ -44,8 +43,7 @@ class ShpMessagesTest {
         ShpServerHello parsed = ShpServerHello.from(hello.toShpMessage(new byte[] { 1, 1 }));
 
         assertEquals(hello.request(), parsed.request());
-        assertEquals(hello.clientCertificateAccepted(), parsed.clientCertificateAccepted());
-        assertEquals(hello.selectedCryptoConfig(), parsed.selectedCryptoConfig());
+        assertEquals(hello.selectedSuiteName(), parsed.selectedSuiteName());
         assertArrayEquals(hello.serverCertificate(), parsed.serverCertificate());
         assertArrayEquals(hello.serverEcdhPublicKey(), parsed.serverEcdhPublicKey());
         assertArrayEquals(hello.serverNonce(), parsed.serverNonce());

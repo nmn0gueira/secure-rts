@@ -17,27 +17,30 @@ public class ShpClient extends AbstractShpPeer {
     private final int serverPort;
     private final String keyStorePath;
     private final String trustStorePath;
+    private final String clientSuitesPath;
+    private final char[] keystorePassword;
 
     private ShpClientProtocol protocol;
     private Socket socket;
 
-    public ShpClient(String serverHost, int serverPort, String keyStorePath, String trustStorePath) {
+    public ShpClient(String serverHost, int serverPort, String keyStorePath, String trustStorePath,
+                     String clientSuitesPath, char[] keystorePassword) {
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.keyStorePath = keyStorePath;
         this.trustStorePath = trustStorePath;
+        this.clientSuitesPath = clientSuitesPath;
+        this.keystorePassword = keystorePassword;
     }
 
     public ShpClientOutput runProtocolClient(String request, byte[] udpPortBytes) throws Exception {
         setupConnection();
         try {
-            char[] password = "changeit".toCharArray();
-
-            var identity = CertificateLoader.loadIdentity(keyStorePath, password, null, password);
-            var trustStore = CertificateLoader.loadKeyStore(trustStorePath, password);
+            var identity = CertificateLoader.loadIdentity(keyStorePath, keystorePassword, null, keystorePassword);
+            var trustStore = CertificateLoader.loadKeyStore(trustStorePath, keystorePassword);
 
             ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.keyPair(), identity.certificate());
-            protocol = new ShpClientProtocol(cryptoSpec, trustStore);
+            protocol = new ShpClientProtocol(cryptoSpec, trustStore, loadSuites(clientSuitesPath));
 
             protocol.setInput(request, udpPortBytes);
 

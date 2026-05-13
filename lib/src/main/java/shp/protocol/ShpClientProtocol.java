@@ -16,25 +16,23 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.PublicKey;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Set;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ShpClientProtocol {
 
-
-    private static final List<String> DEFAULT_SUPPORTED_CIPHER_SUITES = List.of(
-            "AES/GCM/NoPadding:SHA256",
-            "AES/CTR/NoPadding:HMAC-SHA512");
-    
     private static final Logger LOGGER = Logger.getLogger(ShpClientProtocol.class.getName());
     private static final short SHP_VERSION = 0x01;
     private static final byte SHP_RELEASE = 0x01;
 
     private final ShpCryptoSpec cryptoSpec;
     private final KeyStore trustStore;
+    // Suite name → full config content, ordered by client preference
+    private final LinkedHashMap<String, String> supportedSuites;
 
     private String request;
     private byte[] udpPortBytes;
@@ -45,9 +43,11 @@ public class ShpClientProtocol {
     private byte[] sharedSecret;
     private byte[] clientNonce;
 
-    public ShpClientProtocol(ShpCryptoSpec cryptoSpec, KeyStore trustStore) {
+    public ShpClientProtocol(ShpCryptoSpec cryptoSpec, KeyStore trustStore,
+                             LinkedHashMap<String, String> supportedSuites) {
         this.cryptoSpec = cryptoSpec;
         this.trustStore = trustStore;
+        this.supportedSuites = supportedSuites;
     }
 
     public void setInput(String request, byte[] udpPortBytes) {
@@ -64,9 +64,9 @@ public class ShpClientProtocol {
             request,
             clientCertificate,
             clientEcdhPublicKey,
-            DEFAULT_SUPPORTED_CIPHER_SUITES,
+            new ArrayList<>(supportedSuites.keySet()),
             clientNonce,
-            new byte[0] 
+            new byte[0]
         );
 
         byte[] signature = cryptoSpec.sign(unsignedHello.bytesToSign());
@@ -75,12 +75,12 @@ public class ShpClientProtocol {
             request,
             clientCertificate,
             clientEcdhPublicKey,
-            DEFAULT_SUPPORTED_CIPHER_SUITES,
+            new ArrayList<>(supportedSuites.keySet()),
             clientNonce,
             signature
-        );      
+        );
 
-        LOGGER.info("Sent CLIENT_HELLO.");
+        LOGGER.info("Sent CLIENT_HELLO with suites: " + new ArrayList<>(supportedSuites.keySet()));
         return signedHello.toShpMessage(makeHeader(MsgType.CLIENT_HELLO));
     }
 
@@ -99,16 +99,17 @@ public class ShpClientProtocol {
     private ShpProtocolResult handleServerHello(ShpServerHello msg) {
         LOGGER.info("Received SERVER_HELLO.");
         try {
-
-            if (!msg.clientCertificateAccepted()) {
-                LOGGER.severe("Server rejected client certificate.");
-                return ShpProtocolResult.error();
-            }
-
             if (!request.equals(msg.request())) {
                 LOGGER.severe("SERVER_HELLO request mismatch.");
                 return ShpProtocolResult.error();
             }
+
+            String suiteName = msg.selectedSuiteName();
+            if (!supportedSuites.containsKey(suiteName)) {
+                LOGGER.severe("Server selected unsupported cipher suite: " + suiteName);
+                return ShpProtocolResult.error();
+            }
+            cryptoConfig = supportedSuites.get(suiteName);
 
             var serverCertificate = CertificateLoader.decodeCertificate(msg.serverCertificate());
 
@@ -124,7 +125,6 @@ public class ShpClientProtocol {
                 return ShpProtocolResult.error();
             }
 
-            
             byte[] expectedClientNonceResponse = Utils.getIncrementedBytes(clientNonce);
             if (!MessageDigest.isEqual(expectedClientNonceResponse, msg.clientNonceResponse())) {
                 LOGGER.severe("Invalid client nonce response.");
@@ -138,7 +138,6 @@ public class ShpClientProtocol {
 
             PublicKey serverEcdhPublicKey = ShpCryptoSpec.loadPublicKey(msg.serverEcdhPublicKey());
             sharedSecret = cryptoSpec.generateSharedSecret(serverEcdhPublicKey);
-            cryptoConfig = msg.selectedCryptoConfig();
 
             CipherSuite suite = CipherSuiteFactory.fromConfig(cryptoConfig, sharedSecret);
 

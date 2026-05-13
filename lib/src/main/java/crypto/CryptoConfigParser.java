@@ -41,24 +41,4 @@ class CryptoConfigParser {
         });
     }
 
-    /*private static void parseLine(String line, Map<String, String> result) {
-        String trimmed = line.trim();
-
-        if (trimmed.isEmpty()
-        || trimmed.startsWith("#")
-        || trimmed.startsWith("//")
-        || (trimmed.startsWith("<") && trimmed.endsWith(">"))
-        ) return;
-        
-        String[] parts = trimmed.split(":",2);
-
-        if (parts.length != 2) return;
-
-
-        String key = normalizeKey(parts[0].trim());
-        String value = parts[1].trim();
-        
-        result.put(key, value);
-    }*/
-
 }

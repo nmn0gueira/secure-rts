@@ -6,6 +6,9 @@ import shp.protocol.State;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -74,4 +77,26 @@ public abstract class AbstractShpPeer {
     protected abstract ShpProtocolResult dispatch(ShpMessage message) throws Exception;
 
     protected abstract boolean isConnectionClosed();
+
+    /**
+     * Parses a cipher suites file into an ordered map of suite name to config content.
+     *
+     * Each non-blank, non-comment line must have the format:
+     *   SuiteName:configFilePath
+     *
+     * Lines are returned in file order, which determines preference when used by the server.
+     */
+    protected static LinkedHashMap<String, String> loadSuites(String suitesFilePath) throws IOException {
+        LinkedHashMap<String, String> suites = new LinkedHashMap<>();
+        for (String line : Files.readAllLines(Path.of(suitesFilePath))) {
+            line = line.trim();
+            if (line.isEmpty() || line.startsWith("#")) continue;
+            String[] parts = line.split(":", 2);
+            if (parts.length != 2) continue;
+            String suiteName = parts[0].trim();
+            String configPath = parts[1].trim();
+            suites.put(suiteName, Files.readString(Path.of(configPath)));
+        }
+        return suites;
+    }
 }

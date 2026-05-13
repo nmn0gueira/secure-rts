@@ -7,7 +7,6 @@ import crypto.KeyLoader;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.security.*;
-import java.security.spec.ECGenParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.cert.X509Certificate;
 
@@ -35,20 +34,6 @@ public class ShpCryptoSpec {
 
     private final X509Certificate certificate;
 
-    public ShpCryptoSpec() {
-        try {
-            KeyPairGenerator ecGen = KeyPairGenerator.getInstance("EC", "BC");
-            ecGen.initialize(new ECGenParameterSpec(EC_CURVE));
-            ecKeyPair = ecGen.generateKeyPair();
-            ecdsaSignature = new EcdsaSignature();
-            eciesCipher = new EciesCipher();
-            ecdhKeyAgreement = new EcdhKeyAgreement();
-            certificate = null;
-        } catch (GeneralSecurityException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public ShpCryptoSpec(KeyPair signingKeyPair, X509Certificate certificate) {
             this.ecKeyPair = signingKeyPair;
             this.certificate = certificate;
@@ -58,10 +43,9 @@ public class ShpCryptoSpec {
     }
 
     public byte[] getCertificateBytes() throws GeneralSecurityException {
-        if (certificate != null) {
-            return certificate.getEncoded();
-        }
-        return getEcPublicKeyBytes();
+        if (certificate == null)
+            throw new IllegalStateException("No certificate loaded");
+        return certificate.getEncoded();
     }
 
     public byte[] sign(byte[] data) throws GeneralSecurityException {

@@ -12,8 +12,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.Security;
 import java.util.Set;
 
@@ -30,32 +28,32 @@ public class ShpServer extends AbstractShpPeer {
     private final int listenPort;
     private final String keyStorePath;
     private final String trustStorePath;
-    private final String cryptoConfigPath;
+    private final String serverSuitesPath;
     private final Set<String> validRequests;
+    private final char[] keystorePassword;
 
     private ShpServerProtocol protocol;
     private ServerSocket serverSocket;
     private Socket clientSocket;
 
     public ShpServer(int listenPort, String keyStorePath, String trustStorePath,
-                     String cryptoConfigPath, Set<String> validRequests) {
+                     String serverSuitesPath, Set<String> validRequests, char[] keystorePassword) {
         this.listenPort = listenPort;
         this.keyStorePath = keyStorePath;
         this.trustStorePath = trustStorePath;
-        this.cryptoConfigPath = cryptoConfigPath;
+        this.serverSuitesPath = serverSuitesPath;
         this.validRequests = validRequests;
+        this.keystorePassword = keystorePassword;
     }
 
     public ShpServerOutput runProtocolServer() throws Exception {
-        char[] password = "changeit".toCharArray();
-        var identity = CertificateLoader.loadIdentity(keyStorePath, password, null, password);
-        var trustStore = CertificateLoader.loadKeyStore(trustStorePath, password);
+        var identity = CertificateLoader.loadIdentity(keyStorePath, keystorePassword, null, keystorePassword);
+        var trustStore = CertificateLoader.loadKeyStore(trustStorePath, keystorePassword);
 
         ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.keyPair(), identity.certificate());
-        byte[] cryptoConfigBytes = Files.readAllBytes(Path.of(cryptoConfigPath));
 
         protocol = new ShpServerProtocol(cryptoSpec, trustStore, validRequests);
-        protocol.setCryptoConfigBytes(cryptoConfigBytes);
+        protocol.setServerSuites(loadSuites(serverSuitesPath));
 
         startListening();
         acceptClientConnection();
@@ -67,7 +65,7 @@ public class ShpServer extends AbstractShpPeer {
             return new ShpServerOutput(
                     protocol.getUserRequest(),
                     protocol.getUdpPort(),
-                    new String(cryptoConfigBytes),
+                    protocol.getSelectedSuiteConfig(),
                     protocol.getSharedSecret());
         } finally {
             closeConnection();
@@ -103,5 +101,4 @@ public class ShpServer extends AbstractShpPeer {
             if (serverSocket != null) serverSocket.close();
         } catch (Exception ignored) {}
     }
-
 }
