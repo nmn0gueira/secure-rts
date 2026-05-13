@@ -50,25 +50,6 @@ class ShpCryptoSpecTest {
     }
 
     @Test
-    void asymmetricEncryptDecryptSameInstance() throws Exception {
-        var spec = testSpec();
-        byte[] plaintext = "ECIES test".getBytes();
-        byte[] encrypted = spec.asymmetricEncrypt(plaintext, spec.getEcPublicKey());
-        byte[] decrypted = spec.asymmetricDecrypt(encrypted);
-        assertArrayEquals(plaintext, decrypted);
-    }
-
-    @Test
-    void asymmetricEncryptDecryptCrossInstance() throws Exception {
-        var sender = testSpec();
-        var receiver = testSpec();
-        byte[] plaintext = "cross-instance ECIES".getBytes();
-        byte[] encrypted = sender.asymmetricEncrypt(plaintext, receiver.getEcPublicKey());
-        byte[] decrypted = receiver.asymmetricDecrypt(encrypted);
-        assertArrayEquals(plaintext, decrypted);
-    }
-
-    @Test
     void ecdhSharedSecretsMatch() throws Exception {
         var spec1 = testSpec();
         var spec2 = testSpec();
