@@ -28,8 +28,7 @@ public class ShpClient extends AbstractShpPeer {
         this.trustStorePath = trustStorePath;
     }
 
-    public ShpClientOutput runProtocolClient(String userId, byte[] passwordDigest,
-            String request, byte[] udpPortBytes) throws Exception {
+    public ShpClientOutput runProtocolClient(String request, byte[] udpPortBytes) throws Exception {
         setupConnection();
         try {
             char[] password = "changeit".toCharArray();
@@ -40,7 +39,7 @@ public class ShpClient extends AbstractShpPeer {
             ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.keyPair(), identity.certificate());
             protocol = new ShpClientProtocol(cryptoSpec, trustStore);
 
-            protocol.setInput(userId, passwordDigest, request, udpPortBytes);
+            protocol.setInput(request, udpPortBytes);
 
             ShpMessage initial = protocol.buildClientHello();
             sendMessage(initial);
@@ -56,7 +55,7 @@ public class ShpClient extends AbstractShpPeer {
     }
 
     @Override
-    protected ShpProtocolResult dispatch(ShpMessage message) throws Exception {
+    protected ShpProtocolResult dispatch(ShpMessage message) {
         return protocol.handle(message);
     }
 

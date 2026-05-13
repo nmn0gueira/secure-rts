@@ -1,23 +1,20 @@
 package shp.server;
 
-import common.Utils;
 import crypto.CertificateLoader;
-import crypto.KeyLoader;
 import shp.AbstractShpPeer;
 import shp.ShpCryptoSpec;
 import shp.ShpMessage;
 import shp.protocol.ShpProtocolResult;
 import shp.protocol.ShpServerProtocol;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyFactory;
 import java.security.Security;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -33,7 +30,6 @@ public class ShpServer extends AbstractShpPeer {
     private final int listenPort;
     private final String keyStorePath;
     private final String trustStorePath;
-    private final String userDatabasePath;
     private final String cryptoConfigPath;
     private final Set<String> validRequests;
 
@@ -41,12 +37,11 @@ public class ShpServer extends AbstractShpPeer {
     private ServerSocket serverSocket;
     private Socket clientSocket;
 
-    public ShpServer(int listenPort, String keyStorePath, String trustStorePath, String userDatabasePath,
+    public ShpServer(int listenPort, String keyStorePath, String trustStorePath,
                      String cryptoConfigPath, Set<String> validRequests) {
         this.listenPort = listenPort;
         this.keyStorePath = keyStorePath;
         this.trustStorePath = trustStorePath;
-        this.userDatabasePath = userDatabasePath;
         this.cryptoConfigPath = cryptoConfigPath;
         this.validRequests = validRequests;
     }
@@ -57,10 +52,9 @@ public class ShpServer extends AbstractShpPeer {
         var trustStore = CertificateLoader.loadKeyStore(trustStorePath, password);
 
         ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.keyPair(), identity.certificate());
-        Map<String, User> userDatabase = loadUserDatabase(userDatabasePath);
         byte[] cryptoConfigBytes = Files.readAllBytes(Path.of(cryptoConfigPath));
 
-        protocol = new ShpServerProtocol(cryptoSpec, trustStore, userDatabase, validRequests);
+        protocol = new ShpServerProtocol(cryptoSpec, trustStore, validRequests);
         protocol.setCryptoConfigBytes(cryptoConfigBytes);
 
         startListening();
@@ -110,24 +104,4 @@ public class ShpServer extends AbstractShpPeer {
         } catch (Exception ignored) {}
     }
 
-    private Map<String, User> loadUserDatabase(String path) throws Exception {
-        Map<String, User> db = new HashMap<>();
-        KeyFactory kf = KeyFactory.getInstance("EC", "BC");
-        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
-                String[] parts = trimmed.split(":");
-                if (parts.length < 4) continue;
-                String userId = parts[0].trim();
-                byte[] passwordHash = Utils.hexStringToByteArray(parts[1].trim());
-                byte[] salt = Utils.hexStringToByteArray(parts[2].trim());
-                byte[] pubKeyBytes = Utils.hexStringToByteArray(parts[3].trim());
-                var pubKey = KeyLoader.loadPublicKey(pubKeyBytes, kf);
-                db.put(userId, new User(userId, passwordHash, salt, pubKey));
-            }
-        }
-        return db;
-    }
 }
