@@ -1,22 +1,41 @@
 package shp.message;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import shp.ShpCryptoSpec;
 
+import java.security.KeyPairGenerator;
+import java.security.Security;
+import java.security.spec.ECGenParameterSpec;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ShpMessagesTest {
 
+    @BeforeAll
+    static void setup() {
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
+
+    private static ShpCryptoSpec testSpec() throws Exception {
+        KeyPairGenerator gen = KeyPairGenerator.getInstance("EC", "BC");
+        gen.initialize(new ECGenParameterSpec("secp256r1"));
+        return new ShpCryptoSpec(gen.generateKeyPair(), null);
+    }
+
     @Test
-    void clientHelloRoundtrip() {
+    void clientHelloRoundtrip() throws Exception {
         ShpClientHello hello = new ShpClientHello(
                 "cars.dat",
                 new byte[] { 1, 2 },
                 new byte[] { 3, 4 },
                 List.of("AES/GCM/NoPadding", "ChaCha20-Poly1305"),
-                new byte[] { 5, 6 },
-                new byte[] { 7, 8 });
+                new byte[] { 5, 6 });
+        hello.sign(testSpec());
 
         ShpClientHello parsed = ShpClientHello.from(hello.toShpMessage(new byte[] { 1, 0 }));
 
@@ -30,15 +49,15 @@ class ShpMessagesTest {
     }
 
     @Test
-    void serverHelloRoundtrip() {
+    void serverHelloRoundtrip() throws Exception {
         ShpServerHello hello = new ShpServerHello(
                 "cars.dat",
                 new byte[] { 1, 2 },
                 new byte[] { 3, 4 },
                 "SHP_AES_256_GCM",
                 new byte[] { 5, 6 },
-                new byte[] { 7, 8 },
-                new byte[] { 9, 10 });
+                new byte[] { 7, 8 });
+        hello.sign(testSpec());
 
         ShpServerHello parsed = ShpServerHello.from(hello.toShpMessage(new byte[] { 1, 1 }));
 

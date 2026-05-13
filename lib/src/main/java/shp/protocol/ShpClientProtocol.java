@@ -60,28 +60,17 @@ public class ShpClientProtocol {
         byte[] clientCertificate = cryptoSpec.getCertificateBytes();
         byte[] clientEcdhPublicKey = cryptoSpec.getEcdhPublicKeyBytes();
 
-        ShpClientHello unsignedHello = new ShpClientHello(
+        ShpClientHello hello = new ShpClientHello(
             request,
             clientCertificate,
             clientEcdhPublicKey,
             new ArrayList<>(supportedSuites.keySet()),
-            clientNonce,
-            new byte[0]
+            clientNonce
         );
-
-        byte[] signature = cryptoSpec.sign(unsignedHello.bytesToSign());
-
-        ShpClientHello signedHello = new ShpClientHello(
-            request,
-            clientCertificate,
-            clientEcdhPublicKey,
-            new ArrayList<>(supportedSuites.keySet()),
-            clientNonce,
-            signature
-        );
+        hello.sign(cryptoSpec);
 
         LOGGER.info("Sent CLIENT_HELLO with suites: " + new ArrayList<>(supportedSuites.keySet()));
-        return signedHello.toShpMessage(makeHeader(MsgType.CLIENT_HELLO));
+        return hello.toShpMessage(makeHeader(MsgType.CLIENT_HELLO));
     }
 
     public ShpProtocolResult handle(ShpMessage message) {

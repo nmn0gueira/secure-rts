@@ -121,28 +121,17 @@ public class ShpServerProtocol {
             byte[] serverCertificate = cryptoSpec.getCertificateBytes();
             byte[] serverEcdhPublicKey = cryptoSpec.getEcdhPublicKeyBytes();
 
-            ShpServerHello unsignedHello = new ShpServerHello(
+            ShpServerHello hello = new ShpServerHello(
                     msg.request(),
                     serverCertificate,
                     serverEcdhPublicKey,
                     selectedSuiteName,
                     serverNonce,
-                    clientNonceResponse,
-                    new byte[0]);
-
-            byte[] signature = cryptoSpec.sign(unsignedHello.bytesToSign());
-
-            ShpServerHello signedHello = new ShpServerHello(
-                    msg.request(),
-                    serverCertificate,
-                    serverEcdhPublicKey,
-                    selectedSuiteName,
-                    serverNonce,
-                    clientNonceResponse,
-                    signature);
+                    clientNonceResponse);
+            hello.sign(cryptoSpec);
 
             LOGGER.info("Sent SERVER_HELLO with suite: " + selectedSuiteName);
-            return ShpProtocolResult.waiting(signedHello.toShpMessage(makeHeader(MsgType.SERVER_HELLO)));
+            return ShpProtocolResult.waiting(hello.toShpMessage(makeHeader(MsgType.SERVER_HELLO)));
 
         } catch (GeneralSecurityException e) {
             LOGGER.log(Level.SEVERE, "Error handling CLIENT_HELLO.", e);
