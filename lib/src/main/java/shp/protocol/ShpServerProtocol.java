@@ -18,6 +18,7 @@ import java.security.KeyStore;
 import java.security.PublicKey;
 import java.security.MessageDigest;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +39,11 @@ public class ShpServerProtocol {
     private String userRequest;
     private int udpPort;
     private byte[] sharedSecret;
-    private byte[] cryptoConfigBytes;
+
+    private LinkedHashMap<String, String> serverSuites;
+
+    private String selectedSuiteName;
+    private String selectedSuiteConfig;
 
     public ShpServerProtocol(ShpCryptoSpec cryptoSpec, KeyStore trustStore, Set<String> validRequests) {
         this.cryptoSpec = cryptoSpec;
@@ -46,8 +51,8 @@ public class ShpServerProtocol {
         this.validRequests = validRequests;
     }
 
-    public void setCryptoConfigBytes(byte[] cryptoConfigBytes) {
-        this.cryptoConfigBytes = cryptoConfigBytes;
+    public void setServerSuites(LinkedHashMap<String, String> serverSuites) {
+        this.serverSuites = serverSuites;
     }
 
     public ShpProtocolResult handle(ShpMessage message) {
@@ -67,7 +72,6 @@ public class ShpServerProtocol {
         LOGGER.info("Received CLIENT_HELLO.");
 
         try {
-
             var clientCertificate = CertificateLoader.decodeCertificate(msg.clientCertificate());
 
             if (!CertificateLoader.isTrusted(clientCertificate, trustStore)) {
@@ -92,12 +96,25 @@ public class ShpServerProtocol {
                 return ShpProtocolResult.error();
             }
 
+            selectedSuiteName = null;
+            selectedSuiteConfig = null;
+            for (var entry : serverSuites.entrySet()) {
+                if (msg.cipherSuites().contains(entry.getKey())) {
+                    selectedSuiteName = entry.getKey();
+                    selectedSuiteConfig = entry.getValue();
+                    break;
+                }
+            }
+            if (selectedSuiteName == null) {
+                LOGGER.severe("No common cipher suite with client.");
+                return ShpProtocolResult.error();
+            }
+
             PublicKey clientEcdhPublicKey = ShpCryptoSpec.loadPublicKey(msg.clientEcdhPublicKey());
             sharedSecret = cryptoSpec.generateSharedSecret(clientEcdhPublicKey);
 
             userRequest = msg.request();
 
-            String selectedCryptoConfig = new String(cryptoConfigBytes, StandardCharsets.UTF_8);
             serverNonce = ShpCryptoSpec.generateNonce();
             byte[] clientNonceResponse = Utils.getIncrementedBytes(msg.clientNonce());
 
@@ -106,10 +123,9 @@ public class ShpServerProtocol {
 
             ShpServerHello unsignedHello = new ShpServerHello(
                     msg.request(),
-                    true,
                     serverCertificate,
                     serverEcdhPublicKey,
-                    selectedCryptoConfig,
+                    selectedSuiteName,
                     serverNonce,
                     clientNonceResponse,
                     new byte[0]);
@@ -118,15 +134,14 @@ public class ShpServerProtocol {
 
             ShpServerHello signedHello = new ShpServerHello(
                     msg.request(),
-                    true,
                     serverCertificate,
                     serverEcdhPublicKey,
-                    selectedCryptoConfig,
+                    selectedSuiteName,
                     serverNonce,
                     clientNonceResponse,
                     signature);
 
-            LOGGER.info("Sent SERVER_HELLO.");
+            LOGGER.info("Sent SERVER_HELLO with suite: " + selectedSuiteName);
             return ShpProtocolResult.waiting(signedHello.toShpMessage(makeHeader(MsgType.SERVER_HELLO)));
 
         } catch (GeneralSecurityException e) {
@@ -139,8 +154,7 @@ public class ShpServerProtocol {
         LOGGER.info("Received CLIENT_FINISH.");
 
         try {
-            String selectedCryptoConfig = new String(cryptoConfigBytes, StandardCharsets.UTF_8);
-            CipherSuite suite = CipherSuiteFactory.fromConfig(selectedCryptoConfig, sharedSecret);
+            CipherSuite suite = CipherSuiteFactory.fromConfig(selectedSuiteConfig, sharedSecret);
 
             if (suite.hasIntegrityCheck()) {
                 boolean validIntegrity = suite.integrityCheck()
@@ -191,18 +205,10 @@ public class ShpServerProtocol {
         }
     }
 
-
-    public String getUserRequest() {
-        return userRequest;
-    }
-
-    public int getUdpPort() {
-        return udpPort;
-    }
-
-    public byte[] getSharedSecret() {
-        return sharedSecret;
-    }
+    public String getUserRequest() { return userRequest; }
+    public int getUdpPort() { return udpPort; }
+    public byte[] getSharedSecret() { return sharedSecret; }
+    public String getSelectedSuiteConfig() { return selectedSuiteConfig; }
 
     private byte[] makeHeader(MsgType type) {
         return new byte[] { (byte) (SHP_VERSION << 4 | SHP_RELEASE), (byte) type.ordinal() };
