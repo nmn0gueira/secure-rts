@@ -1,7 +1,7 @@
 package shp.client;
 
 import shp.AbstractShpPeer;
-import crypto.CertificateLoader;
+import crypto.CertificateUtils;
 import shp.ShpCryptoSpec;
 import shp.ShpMessage;
 import shp.protocol.ShpClientProtocol;
@@ -36,10 +36,10 @@ public class ShpClient extends AbstractShpPeer {
     public ShpClientOutput runProtocolClient(String request, byte[] udpPortBytes) throws Exception {
         setupConnection();
         try {
-            var identity = CertificateLoader.loadIdentity(keyStorePath, keystorePassword, null, keystorePassword);
-            var trustStore = CertificateLoader.loadKeyStore(trustStorePath, keystorePassword);
+            var identity = CertificateUtils.loadIdentity(keyStorePath, keystorePassword);
+            var trustStore = CertificateUtils.loadKeyStore(trustStorePath, keystorePassword);
 
-            ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.keyPair(), identity.certificate());
+            ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.privateKey(), identity.certificate());
             protocol = new ShpClientProtocol(cryptoSpec, trustStore, loadSuites(clientSuitesPath));
 
             protocol.setInput(request, udpPortBytes);

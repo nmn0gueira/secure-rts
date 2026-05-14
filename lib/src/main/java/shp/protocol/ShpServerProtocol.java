@@ -3,7 +3,7 @@ package shp.protocol;
 import common.Utils;
 import crypto.CipherSuite;
 import crypto.CipherSuiteFactory;
-import crypto.CertificateLoader;
+import crypto.CertificateUtils;
 import shp.message.ShpClientHello;
 import shp.message.ShpServerHello;
 import shp.message.ShpClientFinish;
@@ -72,9 +72,9 @@ public class ShpServerProtocol {
         LOGGER.info("Received CLIENT_HELLO.");
 
         try {
-            var clientCertificate = CertificateLoader.decodeCertificate(msg.clientCertificate());
+            var clientCertificate = CertificateUtils.decodeCertificate(msg.clientCertificate());
 
-            if (!CertificateLoader.isTrusted(clientCertificate, trustStore)) {
+            if (!CertificateUtils.isTrusted(clientCertificate, trustStore)) {
                 LOGGER.severe("Untrusted client certificate.");
                 return ShpProtocolResult.error();
             }
@@ -122,7 +122,6 @@ public class ShpServerProtocol {
             byte[] serverEcdhPublicKey = cryptoSpec.getEcdhPublicKeyBytes();
 
             ShpServerHello hello = new ShpServerHello(
-                    msg.request(),
                     serverCertificate,
                     serverEcdhPublicKey,
                     selectedSuiteName,

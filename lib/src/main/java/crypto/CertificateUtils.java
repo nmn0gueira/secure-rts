@@ -11,9 +11,9 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 
-public class CertificateLoader {
+public class CertificateUtils {
 
-    public record Identity(KeyPair keyPair, X509Certificate certificate) {
+    public record Identity(PrivateKey privateKey, X509Certificate certificate) {
     }
 
     public static KeyStore loadKeyStore(String path, char[] password) throws Exception {
@@ -26,16 +26,11 @@ public class CertificateLoader {
         return keyStore;
     }
 
-    public static Identity loadIdentity(String path, char[] storePassword, String alias, char[] keyPassword)
-            throws Exception {
-        KeyStore keyStore = loadKeyStore(path, storePassword);
+    public static Identity loadIdentity(String path, char[] password) throws Exception {
+        KeyStore keyStore = loadKeyStore(path, password);
+        String selectedAlias = firstKeyAlias(keyStore);
 
-        String selectedAlias = alias;
-        if (selectedAlias == null || selectedAlias.isBlank()) {
-            selectedAlias = firstKeyAlias(keyStore);
-        }
-
-        Key key = keyStore.getKey(selectedAlias, keyPassword);
+        Key key = keyStore.getKey(selectedAlias, password);
         if (!(key instanceof PrivateKey privateKey)) {
             throw new IllegalStateException("Alias does not contain a private key: " + selectedAlias);
         }
@@ -45,9 +40,7 @@ public class CertificateLoader {
             throw new IllegalStateException("Alias does not contain an X509 certificate: " + selectedAlias);
         }
 
-        return new Identity(
-                new KeyPair(x509Certificate.getPublicKey(), privateKey),
-                x509Certificate);
+        return new Identity(privateKey, x509Certificate);
     }
 
     public static X509Certificate decodeCertificate(byte[] encoded) throws GeneralSecurityException {

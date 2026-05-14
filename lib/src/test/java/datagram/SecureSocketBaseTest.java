@@ -24,7 +24,7 @@ class SecureSocketBaseTest {
 
         assertEquals(0x17, data[0]);
         assertEquals(0x00, data[1]);
-        assertEquals(0x02, data[2]);
+        assertEquals(0x03, data[2]);
         assertEquals(packet.getLength() - 5, payloadLength);
     }
 

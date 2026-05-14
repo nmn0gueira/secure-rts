@@ -24,7 +24,7 @@ class ShpMessagesTest {
     private static ShpCryptoSpec testSpec() throws Exception {
         KeyPairGenerator gen = KeyPairGenerator.getInstance("EC", "BC");
         gen.initialize(new ECGenParameterSpec("secp256r1"));
-        return new ShpCryptoSpec(gen.generateKeyPair(), null);
+        return new ShpCryptoSpec(gen.generateKeyPair().getPrivate(), null);
     }
 
     @Test
@@ -51,7 +51,6 @@ class ShpMessagesTest {
     @Test
     void serverHelloRoundtrip() throws Exception {
         ShpServerHello hello = new ShpServerHello(
-                "cars.dat",
                 new byte[] { 1, 2 },
                 new byte[] { 3, 4 },
                 "SHP_AES_256_GCM",
@@ -61,7 +60,6 @@ class ShpMessagesTest {
 
         ShpServerHello parsed = ShpServerHello.from(hello.toShpMessage(new byte[] { 1, 1 }));
 
-        assertEquals(hello.request(), parsed.request());
         assertEquals(hello.selectedSuiteName(), parsed.selectedSuiteName());
         assertArrayEquals(hello.serverCertificate(), parsed.serverCertificate());
         assertArrayEquals(hello.serverEcdhPublicKey(), parsed.serverEcdhPublicKey());

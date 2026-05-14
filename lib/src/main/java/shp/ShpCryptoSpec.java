@@ -11,14 +11,8 @@ import java.security.cert.X509Certificate;
 
 public class ShpCryptoSpec {
 
-    public static final int USER_ID_MAX_SIZE = 320;
-    public static final int SALT_SIZE = 8;
     public static final int NONCE_SIZE = 16;
-
-    public static final String REQUEST_CONFIRMATION = "OK";
     public static final String FINISH_PROTOCOL = "GO";
-
-    private static final String EC_CURVE = "secp256r1";
 
     static {
         if (Security.getProvider("BC") == null) {
@@ -26,14 +20,14 @@ public class ShpCryptoSpec {
         }
     }
 
-    private final KeyPair ecKeyPair;
+    private final PrivateKey signingKey;
     private final EcdsaSignature ecdsaSignature;
     private final EcdhKeyAgreement ecdhKeyAgreement;
 
     private final X509Certificate certificate;
 
-    public ShpCryptoSpec(KeyPair signingKeyPair, X509Certificate certificate) {
-        this.ecKeyPair = signingKeyPair;
+    public ShpCryptoSpec(PrivateKey signingKey, X509Certificate certificate) {
+        this.signingKey = signingKey;
         this.certificate = certificate;
         ecdsaSignature = new EcdsaSignature();
         ecdhKeyAgreement = new EcdhKeyAgreement();
@@ -46,7 +40,7 @@ public class ShpCryptoSpec {
     }
 
     public byte[] sign(byte[] data) throws GeneralSecurityException {
-        return ecdsaSignature.sign(ecKeyPair.getPrivate(), data);
+        return ecdsaSignature.sign(signingKey, data);
     }
 
     public boolean verifySignature(PublicKey publicKey, byte[] data, byte[] signature) throws GeneralSecurityException {
@@ -63,11 +57,11 @@ public class ShpCryptoSpec {
     }
 
     public PublicKey getEcPublicKey() {
-        return ecKeyPair.getPublic();
+        return certificate.getPublicKey();
     }
 
     public byte[] getEcPublicKeyBytes() {
-        return ecKeyPair.getPublic().getEncoded();
+        return certificate.getPublicKey().getEncoded();
     }
 
     public static byte[] generateNonce() {
@@ -85,10 +79,5 @@ public class ShpCryptoSpec {
     public static PublicKey loadPublicKey(byte[] encoded) throws GeneralSecurityException {
         KeyFactory kf = KeyFactory.getInstance("EC", "BC");
         return kf.generatePublic(new X509EncodedKeySpec(encoded));
-    }
-
-    public static PublicKey loadPublicKeyFromFile(String path) throws Exception {
-        KeyFactory kf = KeyFactory.getInstance("EC", "BC");
-        return KeyLoader.loadPublicKeyFromFile(path, kf);
     }
 }

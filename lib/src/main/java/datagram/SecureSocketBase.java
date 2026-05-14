@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 class SecureSocketBase {
 
     protected static final int UDP_MAX_SIZE = 65507;
-    private static final short RTSSP_VERSION = 0x0002;
+    private static final short RTSSP_VERSION = 0x0003;
     private static final byte RTSSP_CONTENT_TYPE_APPLICATION_DATA = 0x17;
     private static final int RTSSP_HEADER_SIZE = 5;
 

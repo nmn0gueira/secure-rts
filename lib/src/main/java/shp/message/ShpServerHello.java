@@ -10,9 +10,8 @@ import java.util.List;
 
 public class ShpServerHello {
 
-    private static final int PAYLOAD_SIZE = 7;
+    private static final int PAYLOAD_SIZE = 6;
 
-    private final String request;
     private final byte[] serverCertificate;
     private final byte[] serverEcdhPublicKey;
     private final String selectedSuiteName;
@@ -20,9 +19,8 @@ public class ShpServerHello {
     private final byte[] clientNonceResponse;
     private byte[] signature = new byte[0];
 
-    public ShpServerHello(String request, byte[] serverCertificate, byte[] serverEcdhPublicKey,
+    public ShpServerHello(byte[] serverCertificate, byte[] serverEcdhPublicKey,
             String selectedSuiteName, byte[] serverNonce, byte[] clientNonceResponse) {
-        this.request = request;
         this.serverCertificate = serverCertificate;
         this.serverEcdhPublicKey = serverEcdhPublicKey;
         this.selectedSuiteName = selectedSuiteName;
@@ -34,7 +32,6 @@ public class ShpServerHello {
         this.signature = spec.sign(bytesToSign());
     }
 
-    public String request() { return request; }
     public byte[] serverCertificate() { return serverCertificate; }
     public byte[] serverEcdhPublicKey() { return serverEcdhPublicKey; }
     public String selectedSuiteName() { return selectedSuiteName; }
@@ -44,7 +41,6 @@ public class ShpServerHello {
 
     public ShpMessage toShpMessage(byte[] header) {
         return new ShpMessage(header, List.of(
-                request.getBytes(StandardCharsets.UTF_8),
                 serverCertificate,
                 serverEcdhPublicKey,
                 selectedSuiteName.getBytes(StandardCharsets.UTF_8),
@@ -61,19 +57,17 @@ public class ShpServerHello {
         }
 
         ShpServerHello hello = new ShpServerHello(
-                new String(payload.get(0), StandardCharsets.UTF_8),
+                payload.get(0),
                 payload.get(1),
-                payload.get(2),
-                new String(payload.get(3), StandardCharsets.UTF_8),
-                payload.get(4),
-                payload.get(5));
-        hello.signature = payload.get(6);
+                new String(payload.get(2), StandardCharsets.UTF_8),
+                payload.get(3),
+                payload.get(4));
+        hello.signature = payload.get(5);
         return hello;
     }
 
     public byte[] bytesToSign() {
         return Utils.concat(
-                request.getBytes(StandardCharsets.UTF_8),
                 serverCertificate,
                 serverEcdhPublicKey,
                 selectedSuiteName.getBytes(StandardCharsets.UTF_8),

@@ -1,7 +1,7 @@
 package shp.protocol;
 
 import common.Utils;
-import crypto.CertificateLoader;
+import crypto.CertificateUtils;
 import crypto.CipherSuite;
 import crypto.CipherSuiteFactory;
 import shp.ShpCryptoSpec;
@@ -31,7 +31,6 @@ public class ShpClientProtocol {
 
     private final ShpCryptoSpec cryptoSpec;
     private final KeyStore trustStore;
-    // Suite name → full config content, ordered by client preference
     private final LinkedHashMap<String, String> supportedSuites;
 
     private String request;
@@ -88,11 +87,6 @@ public class ShpClientProtocol {
     private ShpProtocolResult handleServerHello(ShpServerHello msg) {
         LOGGER.info("Received SERVER_HELLO.");
         try {
-            if (!request.equals(msg.request())) {
-                LOGGER.severe("SERVER_HELLO request mismatch.");
-                return ShpProtocolResult.error();
-            }
-
             String suiteName = msg.selectedSuiteName();
             if (!supportedSuites.containsKey(suiteName)) {
                 LOGGER.severe("Server selected unsupported cipher suite: " + suiteName);
@@ -100,9 +94,9 @@ public class ShpClientProtocol {
             }
             cryptoConfig = supportedSuites.get(suiteName);
 
-            var serverCertificate = CertificateLoader.decodeCertificate(msg.serverCertificate());
+            var serverCertificate = CertificateUtils.decodeCertificate(msg.serverCertificate());
 
-            if (!CertificateLoader.isTrusted(serverCertificate, trustStore)) {
+            if (!CertificateUtils.isTrusted(serverCertificate, trustStore)) {
                 LOGGER.severe("Untrusted server certificate.");
                 return ShpProtocolResult.error();
             }
