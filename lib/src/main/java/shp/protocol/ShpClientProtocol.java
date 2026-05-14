@@ -77,6 +77,10 @@ public class ShpClientProtocol {
 
         return switch (type) {
             case SERVER_HELLO -> handleServerHello(ShpServerHello.from(message));
+            case SERVER_ERROR -> {
+                String reason = new String(message.getPayload().get(0), StandardCharsets.UTF_8);
+                throw new RuntimeException("Server rejected handshake: " + reason);
+            }
             default -> {
                 LOGGER.severe("Unexpected message type: " + type);
                 yield ShpProtocolResult.error();

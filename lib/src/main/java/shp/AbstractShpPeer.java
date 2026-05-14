@@ -54,7 +54,10 @@ public abstract class AbstractShpPeer {
         while (true){
             ShpProtocolResult result = dispatch(incoming);
 
-            if(result.state() == State.ERROR){
+            if (result.state() == State.ERROR) {
+                if (result.response().isPresent()) {
+                    try { sendMessage(result.response().get()); } catch (Exception ignored) {}
+                }
                 throw new RuntimeException("SHP protocol error.");
             }
 

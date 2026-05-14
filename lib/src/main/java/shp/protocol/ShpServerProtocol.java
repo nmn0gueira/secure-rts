@@ -12,6 +12,7 @@ import shp.ShpMessage;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
@@ -81,33 +82,28 @@ public class ShpServerProtocol {
             var clientCertificate = CertificateUtils.decodeCertificate(msg.clientCertificate());
 
             if (!CertificateUtils.isTrusted(clientCertificate, trustStore)) {
-                LOGGER.severe("Untrusted client certificate.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("Untrusted client certificate");
             }
 
             PublicKey clientPublicKey = clientCertificate.getPublicKey();
 
             if (!cryptoSpec.verifySignature(clientPublicKey, msg.bytesToSign(), msg.clientSignature())) {
-                LOGGER.severe("Invalid CLIENT_HELLO signature.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("Invalid CLIENT_HELLO signature");
             }
 
             if (validRequests != null && !validRequests.contains(msg.request())) {
-                LOGGER.severe("Invalid request: " + msg.request());
-                return ShpProtocolResult.error();
+                return errorAndNotify("Unknown movie: " + msg.request());
             }
 
             if (!noncesReceived.add(ByteBuffer.wrap(msg.clientNonce()))) {
-                LOGGER.severe("Repeated client nonce.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("Repeated client nonce");
             }
 
             LinkedHashMap<String, String> suitesToSearch = serverSuites;
             if (perMovieSuites != null) {
                 suitesToSearch = perMovieSuites.get(msg.request());
                 if (suitesToSearch == null) {
-                    LOGGER.severe("No cipher suites configured for movie: " + msg.request());
-                    return ShpProtocolResult.error();
+                    return errorAndNotify("No cipher suites configured for movie: " + msg.request());
                 }
             }
 
@@ -121,8 +117,7 @@ public class ShpServerProtocol {
                 }
             }
             if (selectedSuiteName == null) {
-                LOGGER.severe("No common cipher suite with client.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("No common cipher suite");
             }
 
             PublicKey clientEcdhPublicKey = ShpCryptoSpec.loadPublicKey(msg.clientEcdhPublicKey());
@@ -148,7 +143,7 @@ public class ShpServerProtocol {
             return ShpProtocolResult.waiting(hello.toShpMessage(makeHeader(MsgType.SERVER_HELLO)));
 
         } catch (GeneralSecurityException e) {
-            LOGGER.log(Level.SEVERE, "Error handling CLIENT_HELLO.", e);
+            LOGGER.log(Level.SEVERE, "Unexpected error in CLIENT_HELLO.", e);
             return ShpProtocolResult.error();
         }
     }
@@ -164,8 +159,7 @@ public class ShpServerProtocol {
                         .verifyIntegrity(msg.encryptedPayload(), serverNonce, msg.integrityProof());
 
                 if (!validIntegrity) {
-                    LOGGER.severe("CLIENT_FINISH integrity check failed.");
-                    return ShpProtocolResult.error();
+                    return errorAndNotify("CLIENT_FINISH integrity check failed");
                 }
             }
 
@@ -182,19 +176,16 @@ public class ShpServerProtocol {
             byte[] udpPortBytes = parts[2];
 
             if (!MessageDigest.isEqual(finishToken, receivedFinishToken)) {
-                LOGGER.severe("Invalid finish token.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("Invalid finish token");
             }
 
             byte[] expectedServerNonceResponse = Utils.getIncrementedBytes(serverNonce);
             if (!MessageDigest.isEqual(expectedServerNonceResponse, serverNonceResponse)) {
-                LOGGER.severe("Invalid server nonce response.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("Invalid server nonce response");
             }
 
             if (udpPortBytes.length != 4) {
-                LOGGER.severe("Invalid UDP port length.");
-                return ShpProtocolResult.error();
+                return errorAndNotify("Invalid UDP port length");
             }
 
             udpPort = ByteBuffer.wrap(udpPortBytes).getInt();
@@ -203,9 +194,17 @@ public class ShpServerProtocol {
             return ShpProtocolResult.finished();
 
         } catch (GeneralSecurityException | RuntimeException e) {
-            LOGGER.log(Level.SEVERE, "Error handling CLIENT_FINISH.", e);
+            LOGGER.log(Level.SEVERE, "Unexpected error in CLIENT_FINISH.", e);
             return ShpProtocolResult.error();
         }
+    }
+
+    private ShpProtocolResult errorAndNotify(String reason) {
+        LOGGER.severe("SHP error: " + reason);
+        ShpMessage errorMsg = new ShpMessage(
+                makeHeader(MsgType.SERVER_ERROR),
+                List.of(reason.getBytes(StandardCharsets.UTF_8)));
+        return ShpProtocolResult.errorWith(errorMsg);
     }
 
     public String getUserRequest() { return userRequest; }

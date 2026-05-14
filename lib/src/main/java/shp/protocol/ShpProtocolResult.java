@@ -10,6 +10,10 @@ public record ShpProtocolResult(Optional<ShpMessage> response, State state) {
         return new ShpProtocolResult(Optional.empty(), State.ERROR);
     }
 
+    public static ShpProtocolResult errorWith(ShpMessage message) {
+        return new ShpProtocolResult(Optional.of(message), State.ERROR);
+    }
+
     public static ShpProtocolResult ongoing(ShpMessage message) {
         return new ShpProtocolResult(Optional.of(message), State.ONGOING);
     }
