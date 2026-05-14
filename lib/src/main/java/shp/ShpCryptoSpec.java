@@ -2,7 +2,6 @@ package shp;
 
 import crypto.EcdhKeyAgreement;
 import crypto.EcdsaSignature;
-import crypto.KeyLoader;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.security.*;
@@ -12,7 +11,6 @@ import java.security.cert.X509Certificate;
 public class ShpCryptoSpec {
 
     public static final int NONCE_SIZE = 16;
-    public static final String FINISH_PROTOCOL = "GO";
 
     static {
         if (Security.getProvider("BC") == null) {
@@ -68,12 +66,6 @@ public class ShpCryptoSpec {
         byte[] nonce = new byte[NONCE_SIZE];
         new SecureRandom().nextBytes(nonce);
         return nonce;
-    }
-
-    public static byte[] generateIterationBytes() {
-        byte[] iter = new byte[4];
-        new SecureRandom().nextBytes(iter);
-        return iter;
     }
 
     public static PublicKey loadPublicKey(byte[] encoded) throws GeneralSecurityException {

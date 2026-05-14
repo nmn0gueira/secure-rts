@@ -91,12 +91,6 @@ class ShpCryptoSpecTest {
     }
 
     @Test
-    void generateIterationBytesHasFourBytes() {
-        byte[] iter = ShpCryptoSpec.generateIterationBytes();
-        assertEquals(4, iter.length);
-    }
-
-    @Test
     void loadPublicKeyRoundtrip() throws Exception {
         var spec = testSpec(identity1);
         byte[] encoded = spec.getEcPublicKeyBytes();

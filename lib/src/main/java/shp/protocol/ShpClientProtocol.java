@@ -128,9 +128,8 @@ public class ShpClientProtocol {
 
             CipherSuite suite = CipherSuiteFactory.fromConfig(cryptoConfig, sharedSecret);
 
-            byte[] finishToken = ShpCryptoSpec.FINISH_PROTOCOL.getBytes(StandardCharsets.UTF_8);
             byte[] serverNonceResponse = Utils.getIncrementedBytes(msg.serverNonce());
-            byte[] plaintext = Utils.concat(finishToken, serverNonceResponse, udpPortBytes);
+            byte[] plaintext = Utils.concat(serverNonceResponse, udpPortBytes);
 
             byte[] encryptedPayload = suite.cipher().encrypt(plaintext);
             byte[] integrityProof = suite.hasIntegrityCheck()

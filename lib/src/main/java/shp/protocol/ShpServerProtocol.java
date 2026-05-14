@@ -168,20 +168,12 @@ public class ShpServerProtocol {
 
             byte[] decryptedPayload = suite.cipher().decrypt(msg.encryptedPayload());
 
-            byte[] finishToken = ShpCryptoSpec.FINISH_PROTOCOL.getBytes(StandardCharsets.UTF_8);
             byte[][] parts = Utils.divideInParts(
                     decryptedPayload,
-                    finishToken.length,
-                    finishToken.length + ShpCryptoSpec.NONCE_SIZE);
+                    ShpCryptoSpec.NONCE_SIZE);
 
-            byte[] receivedFinishToken = parts[0];
-            byte[] serverNonceResponse = parts[1];
-            byte[] udpPortBytes = parts[2];
-
-            if (!MessageDigest.isEqual(finishToken, receivedFinishToken)) {
-                LOGGER.severe("Invalid finish token.");
-                return ShpProtocolResult.error();
-            }
+            byte[] serverNonceResponse = parts[0];
+            byte[] udpPortBytes = parts[1];
 
             byte[] expectedServerNonceResponse = Utils.getIncrementedBytes(serverNonce);
             if (!MessageDigest.isEqual(expectedServerNonceResponse, serverNonceResponse)) {
