@@ -6,6 +6,9 @@ import datagram.SecureDatagramSocket;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import shp.client.ShpClient;
 import shp.client.ShpClientOutput;
 import shp.server.ShpServer;
@@ -13,6 +16,7 @@ import shp.server.ShpServerOutput;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +24,11 @@ import java.security.Security;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ShpTest {
 
@@ -85,6 +94,60 @@ public class ShpTest {
         clientSuitesPath = tempDir.resolve("client-suites.conf").toAbsolutePath().toString();
         Files.writeString(Path.of(serverSuitesPath), suitesContent);
         Files.writeString(Path.of(clientSuitesPath), suitesContent);
+    }
+
+    static Stream<Arguments> suiteConfigs() {
+        return Stream.of(
+            Arguments.of(
+                "AEAD/GCM — no integrity check",
+                "CONFIDENTIALITY:AES/GCM/NoPadding\nINTEGRITY:NULL\n"),
+            Arguments.of(
+                "AES-CBC + HMAC-SHA256 (MAC integrity)",
+                "CONFIDENTIALITY:AES/CBC/PKCS5Padding\nINTEGRITY:MAC\nMAC:HmacSHA256\n"),
+            Arguments.of(
+                "AES-CBC + SHA-256 (hash integrity)",
+                "CONFIDENTIALITY:AES/CBC/PKCS5Padding\nINTEGRITY:H\nH:SHA-256\n")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("suiteConfigs")
+    void shpHandshakeCompletesForAllIntegrityTypes(String label, String suiteBody) throws Exception {
+        int port = findFreePort();
+
+        String suiteFile = "[TEST_SUITE]\n" + suiteBody;
+        Path tempDir = Files.createTempDirectory("shp-integrity-test");
+        Path serverSuites = tempDir.resolve("server.conf");
+        Path clientSuites = tempDir.resolve("client.conf");
+        Files.writeString(serverSuites, suiteFile);
+        Files.writeString(clientSuites, suiteFile);
+
+        ShpServer server = new ShpServer(port, serverKsPath, serverTsPath,
+                serverSuites.toString(), Set.of("movie"), PASSWORD);
+
+        CompletableFuture<ShpServerOutput> future = CompletableFuture.supplyAsync(() -> {
+            try { return server.runProtocolServer(); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        });
+
+        Thread.sleep(500);
+
+        ShpClient client = new ShpClient("localhost", port, clientKsPath, clientTsPath,
+                clientSuites.toString(), PASSWORD);
+        byte[] udpPortBytes = ByteBuffer.allocate(4).putInt(UDP_PORT).array();
+        ShpClientOutput cOutput = client.runProtocolClient("movie", udpPortBytes);
+
+        ShpServerOutput sOutput = future.get(5, TimeUnit.SECONDS);
+
+        assertArrayEquals(cOutput.sharedSecret(), sOutput.sharedSecret());
+        assertEquals("movie", sOutput.request());
+        assertEquals(UDP_PORT, sOutput.udpPort());
+    }
+
+    private static int findFreePort() throws Exception {
+        try (ServerSocket s = new ServerSocket(0)) {
+            return s.getLocalPort();
+        }
     }
 
     private static void keytool(String... cmd) throws Exception {

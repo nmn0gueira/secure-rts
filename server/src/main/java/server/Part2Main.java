@@ -59,7 +59,7 @@ public class Part2Main {
                 String movieName = out.request();
                 String movieFile = catalog.get(movieName);
 
-                System.out.println("SHP complete. Streaming '" + movieName + "' → "
+                System.out.println("SHP complete. Streaming '" + movieName + "' to "
                         + multicastAddr + ":" + out.udpPort());
 
                 CipherSuite suite = CipherSuiteFactory.fromConfig(out.cryptoConfig(), out.sharedSecret());

@@ -157,16 +157,24 @@ public class ShpServerProtocol {
         try {
             CipherSuite suite = CipherSuiteFactory.fromConfig(selectedSuiteConfig, sharedSecret);
 
+            byte[] decryptedPayload = null;
             if (suite.hasIntegrityCheck()) {
-                boolean validIntegrity = suite.integrityCheck()
-                        .verifyIntegrity(msg.encryptedPayload(), serverNonce, msg.integrityProof());
+                boolean validIntegrity;
+                if (suite.usesMac())
+                    validIntegrity = suite.integrityCheck().verifyIntegrity(msg.encryptedPayload(), serverNonce, msg.integrityProof());
+                else {
+                    decryptedPayload = suite.cipher().decrypt(msg.encryptedPayload());
+                    validIntegrity = suite.integrityCheck().verifyIntegrity(decryptedPayload, null, msg.integrityProof());
+                }
 
                 if (!validIntegrity) {
-                    return errorAndNotify("CLIENT_FINISH integrity check failed");
+                    LOGGER.severe("CLIENT_FINISH integrity check failed");
+                    return ShpProtocolResult.error();
                 }
             }
 
-            byte[] decryptedPayload = suite.cipher().decrypt(msg.encryptedPayload());
+            if (decryptedPayload == null) // we will have already decrypted the payload if we needed to do it for the integrity check
+                decryptedPayload = suite.cipher().decrypt(msg.encryptedPayload());
 
             byte[][] parts = Utils.divideInParts(
                     decryptedPayload,

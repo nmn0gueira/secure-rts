@@ -132,9 +132,14 @@ public class ShpClientProtocol {
             byte[] plaintext = Utils.concat(serverNonceResponse, udpPortBytes);
 
             byte[] encryptedPayload = suite.cipher().encrypt(plaintext);
-            byte[] integrityProof = suite.hasIntegrityCheck()
-                    ? suite.integrityCheck().createIntegrityProof(encryptedPayload, msg.serverNonce())
-                    : new byte[0];
+            byte[] integrityProof;
+            if (suite.hasIntegrityCheck()) {
+                integrityProof = suite.usesMac()
+                        ? suite.integrityCheck().createIntegrityProof(encryptedPayload, msg.serverNonce())
+                        : suite.integrityCheck().createIntegrityProof(plaintext, null);
+            }
+            else
+                integrityProof = new byte[0];
 
             ShpClientFinish finish = new ShpClientFinish(encryptedPayload, integrityProof);
 
