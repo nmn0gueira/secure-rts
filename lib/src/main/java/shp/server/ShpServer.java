@@ -13,6 +13,8 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.Security;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -31,6 +33,8 @@ public class ShpServer extends AbstractShpPeer {
     private final String serverSuitesPath;
     private final Set<String> validRequests;
     private final char[] keystorePassword;
+
+    private Map<String, LinkedHashMap<String, String>> perMovieSuites;
 
     private ShpServerProtocol protocol;
     private ServerSocket serverSocket;
@@ -53,7 +57,11 @@ public class ShpServer extends AbstractShpPeer {
         ShpCryptoSpec cryptoSpec = new ShpCryptoSpec(identity.privateKey(), identity.certificate());
 
         protocol = new ShpServerProtocol(cryptoSpec, trustStore, validRequests);
-        protocol.setServerSuites(loadSuites(serverSuitesPath));
+        if (perMovieSuites != null) {
+            protocol.setPerMovieSuites(perMovieSuites);
+        } else {
+            protocol.setServerSuites(loadSuites(serverSuitesPath));
+        }
 
         startListening();
         acceptClientConnection();
@@ -80,6 +88,10 @@ public class ShpServer extends AbstractShpPeer {
     @Override
     public boolean isConnectionClosed() {
         return clientSocket == null || clientSocket.isClosed();
+    }
+
+    public void setPerMovieSuites(Map<String, LinkedHashMap<String, String>> perMovieSuites) {
+        this.perMovieSuites = perMovieSuites;
     }
 
     private void startListening() throws IOException {

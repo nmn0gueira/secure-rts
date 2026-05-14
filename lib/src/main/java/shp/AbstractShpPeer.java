@@ -78,15 +78,7 @@ public abstract class AbstractShpPeer {
 
     protected abstract boolean isConnectionClosed();
 
-    /**
-     * Parses a cipher suites file into an ordered map of suite name to config content.
-     *
-     * Each non-blank, non-comment line must have the format:
-     *   SuiteName:configFilePath
-     *
-     * Lines are returned in file order, which determines preference when used by the server.
-     */
-    protected static LinkedHashMap<String, String> loadSuites(String suitesFilePath) throws IOException {
+    public static LinkedHashMap<String, String> loadSuites(String suitesFilePath) throws IOException {
         LinkedHashMap<String, String> suites = new LinkedHashMap<>();
         String currentSuite = null;
         StringBuilder currentConfig = new StringBuilder();

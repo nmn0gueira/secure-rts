@@ -19,6 +19,7 @@ import java.security.PublicKey;
 import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,6 +42,7 @@ public class ShpServerProtocol {
     private byte[] sharedSecret;
 
     private LinkedHashMap<String, String> serverSuites;
+    private Map<String, LinkedHashMap<String, String>> perMovieSuites;
 
     private String selectedSuiteName;
     private String selectedSuiteConfig;
@@ -53,6 +55,10 @@ public class ShpServerProtocol {
 
     public void setServerSuites(LinkedHashMap<String, String> serverSuites) {
         this.serverSuites = serverSuites;
+    }
+
+    public void setPerMovieSuites(Map<String, LinkedHashMap<String, String>> perMovieSuites) {
+        this.perMovieSuites = perMovieSuites;
     }
 
     public ShpProtocolResult handle(ShpMessage message) {
@@ -96,9 +102,18 @@ public class ShpServerProtocol {
                 return ShpProtocolResult.error();
             }
 
+            LinkedHashMap<String, String> suitesToSearch = serverSuites;
+            if (perMovieSuites != null) {
+                suitesToSearch = perMovieSuites.get(msg.request());
+                if (suitesToSearch == null) {
+                    LOGGER.severe("No cipher suites configured for movie: " + msg.request());
+                    return ShpProtocolResult.error();
+                }
+            }
+
             selectedSuiteName = null;
             selectedSuiteConfig = null;
-            for (var entry : serverSuites.entrySet()) {
+            for (var entry : suitesToSearch.entrySet()) {
                 if (msg.cipherSuites().contains(entry.getKey())) {
                     selectedSuiteName = entry.getKey();
                     selectedSuiteConfig = entry.getValue();
