@@ -88,15 +88,26 @@ public abstract class AbstractShpPeer {
      */
     protected static LinkedHashMap<String, String> loadSuites(String suitesFilePath) throws IOException {
         LinkedHashMap<String, String> suites = new LinkedHashMap<>();
+        String currentSuite = null;
+        StringBuilder currentConfig = new StringBuilder();
+
         for (String line : Files.readAllLines(Path.of(suitesFilePath))) {
-            line = line.trim();
-            if (line.isEmpty() || line.startsWith("#")) continue;
-            String[] parts = line.split(":", 2);
-            if (parts.length != 2) continue;
-            String suiteName = parts[0].trim();
-            String configPath = parts[1].trim();
-            suites.put(suiteName, Files.readString(Path.of(configPath)));
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                if (currentSuite != null)
+                    suites.put(currentSuite, currentConfig.toString());
+                currentSuite = trimmed.substring(1, trimmed.length() - 1).trim();
+                currentConfig = new StringBuilder();
+            } else if (currentSuite != null) {
+                currentConfig.append(trimmed).append("\n");
+            }
         }
+
+        if (currentSuite != null)
+            suites.put(currentSuite, currentConfig.toString());
+
         return suites;
     }
 }

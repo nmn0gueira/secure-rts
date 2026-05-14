@@ -80,10 +80,7 @@ public class ShpTest {
                 "-file", serverCert, "-storetype", "PKCS12",
                 "-keystore", clientTsPath, "-storepass", pw);
 
-        Path cryptoPropsPath = tempDir.resolve("crypto.properties");
-        Files.writeString(cryptoPropsPath, "CONFIDENTIALITY:AES/GCM/NoPadding\nINTEGRITY:NULL\n");
-
-        String suitesContent = "SHP_AES_256_GCM:" + cryptoPropsPath.toAbsolutePath() + "\n";
+        String suitesContent = "[SHP_AES_256_GCM]\nCONFIDENTIALITY:AES/GCM/NoPadding\nINTEGRITY:NULL\n";
         serverSuitesPath = tempDir.resolve("server-suites.conf").toAbsolutePath().toString();
         clientSuitesPath = tempDir.resolve("client-suites.conf").toAbsolutePath().toString();
         Files.writeString(Path.of(serverSuitesPath), suitesContent);
