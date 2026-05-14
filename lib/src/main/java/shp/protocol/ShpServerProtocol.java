@@ -82,13 +82,15 @@ public class ShpServerProtocol {
             var clientCertificate = CertificateUtils.decodeCertificate(msg.clientCertificate());
 
             if (!CertificateUtils.isTrusted(clientCertificate, trustStore)) {
-                return errorAndNotify("Untrusted client certificate");
+                LOGGER.severe("Untrusted client certificate.");
+                return ShpProtocolResult.error();
             }
 
             PublicKey clientPublicKey = clientCertificate.getPublicKey();
 
             if (!cryptoSpec.verifySignature(clientPublicKey, msg.bytesToSign(), msg.clientSignature())) {
-                return errorAndNotify("Invalid CLIENT_HELLO signature");
+                LOGGER.severe("Invalid CLIENT_HELLO signature.");
+                return ShpProtocolResult.error();
             }
 
             if (validRequests != null && !validRequests.contains(msg.request())) {
@@ -96,7 +98,8 @@ public class ShpServerProtocol {
             }
 
             if (!noncesReceived.add(ByteBuffer.wrap(msg.clientNonce()))) {
-                return errorAndNotify("Repeated client nonce");
+                LOGGER.severe("Repeated client nonce.");
+                return ShpProtocolResult.error();
             }
 
             LinkedHashMap<String, String> suitesToSearch = serverSuites;
@@ -176,16 +179,19 @@ public class ShpServerProtocol {
             byte[] udpPortBytes = parts[2];
 
             if (!MessageDigest.isEqual(finishToken, receivedFinishToken)) {
-                return errorAndNotify("Invalid finish token");
+                LOGGER.severe("Invalid finish token.");
+                return ShpProtocolResult.error();
             }
 
             byte[] expectedServerNonceResponse = Utils.getIncrementedBytes(serverNonce);
             if (!MessageDigest.isEqual(expectedServerNonceResponse, serverNonceResponse)) {
-                return errorAndNotify("Invalid server nonce response");
+                LOGGER.severe("Invalid server nonce response.");
+                return ShpProtocolResult.error();
             }
 
             if (udpPortBytes.length != 4) {
-                return errorAndNotify("Invalid UDP port length");
+                LOGGER.severe("Invalid UDP port length.");
+                return ShpProtocolResult.error();
             }
 
             udpPort = ByteBuffer.wrap(udpPortBytes).getInt();
