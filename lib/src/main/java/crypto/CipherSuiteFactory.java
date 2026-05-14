@@ -17,13 +17,13 @@ public class CipherSuiteFactory {
     /**
      * Build a CipherSuite from a config file. Crypto keys are read directly from the file as hex strings.
      * Config format (one entry per line, colon-separated):
-     *   CONFIDENTIALITY: &lt;JCE cipher string or DPRG&gt;
-     *   SYMMETRIC_KEY:   &lt;hex key&gt;
-     *   IV:              &lt;hex iv&gt;   (optional, for non-AEAD ciphers)
+     *   CONFIDENTIALITY: JCE cipher string or DPRG
+     *   SYMMETRIC_KEY:   hex key
+     *   IV:              hex iv   (optional)
      *   INTEGRITY:       NULL | MAC | H
-     *   MAC:             &lt;MAC algorithm&gt;
-     *   MAC_KEY:         &lt;hex key&gt;
-     *   H:               &lt;hash algorithm&gt;
+     *   MAC:             MAC algorithm
+     *   MAC_KEY:         hex key
+     *   H:               hash algorithm
      */
     public static CipherSuite fromFile(String configPath) {
         Map<CryptoConfigKey, String> config = CryptoConfigParser.parseFile(configPath);
