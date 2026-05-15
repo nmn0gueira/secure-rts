@@ -25,17 +25,10 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
     private Key hMacKey;
     private final boolean isMac;
 
-    ConfigurableIntegrityCheck(boolean isMac, String hashAlgorithm, String macAlgorithm, String hexMacKey)
+    ConfigurableIntegrityCheck(boolean isMac, String hashAlgorithm, String macAlgorithm, byte[] keyMaterial)
             throws GeneralSecurityException {
         this.isMac = isMac;
-        if (isMac) { mac = Mac.getInstance(macAlgorithm); setMacMode(macAlgorithm); setMacKey(hexMacKey); }
-        else { hash = MessageDigest.getInstance(hashAlgorithm); }
-    }
-
-    ConfigurableIntegrityCheck(boolean isMac, String hashAlgorithm, String macAlgorithm, byte[] sharedSecret)
-            throws GeneralSecurityException {
-        this.isMac = isMac;
-        if (isMac) { mac = Mac.getInstance(macAlgorithm); setMacMode(macAlgorithm); setMacKey(sharedSecret); }
+        if (isMac) { mac = Mac.getInstance(macAlgorithm); setMacMode(macAlgorithm); setMacKey(keyMaterial); }
         else { hash = MessageDigest.getInstance(hashAlgorithm); }
     }
 
@@ -60,14 +53,6 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
         else if (value.equals(MacMode.RC6GMAC.getModeName())) macMode = MacMode.RC6GMAC;
         else if (value.equals(MacMode.RC6GMACFAST.getModeName())) macMode = MacMode.RC6GMACFAST;
         else macMode = MacMode.HMAC;
-    }
-
-    private void setMacKey(String hexValue) throws InvalidKeyException {
-        switch (macMode) {
-            case HMAC -> { hMacKey = new SecretKeySpec(Utils.hexStringToByteArray(hexValue), mac.getAlgorithm()); mac.init(hMacKey); }
-            case AESGMAC, AESGMACFAST -> hMacKey = new SecretKeySpec(Utils.hexStringToByteArray(hexValue), "AES");
-            case RC6GMAC, RC6GMACFAST -> hMacKey = new SecretKeySpec(Utils.hexStringToByteArray(hexValue), "RC6");
-        }
     }
 
     private void setMacKey(byte[] sharedSecret) throws InvalidKeyException {

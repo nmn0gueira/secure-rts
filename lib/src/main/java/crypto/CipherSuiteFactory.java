@@ -18,12 +18,10 @@ public class CipherSuiteFactory {
      * Build a CipherSuite from a config file. Crypto keys are read directly from the file as hex strings.
      * Config format (one entry per line, colon-separated):
      *   CONFIDENTIALITY: JCE cipher string or DPRG
-     *   SYMMETRIC_KEY:   hex key
-     *   IV:              hex iv   (optional)
+     *   SYMMETRIC_KEY:   seed
      *   INTEGRITY:       NULL | MAC | H
-     *   MAC:             MAC algorithm
-     *   MAC_KEY:         hex key
-     *   H:               hash algorithm
+     *   MAC:             MAC algorithm (if INTEGRITY is MAC)
+     *   H:               hash algorithm (if INTEGRITY is H)
      */
     public static CipherSuite fromFile(String configPath) {
         Map<CryptoConfigKey, String> config = CryptoConfigParser.parseFile(configPath);
@@ -79,6 +77,15 @@ public class CipherSuiteFactory {
     }
 
     private static CipherSuite buildFromMap(Map<CryptoConfigKey, String> config, byte[] sharedSecret, SecureRandom random) {
+        byte[] keyMaterial = sharedSecret;
+        if (keyMaterial == null) {
+            String hexSeed = config.get(CryptoConfigKey.SYMMETRIC_KEY);
+            if (hexSeed != null) keyMaterial = Utils.hexStringToByteArray(hexSeed);
+        }
+
+        String keySizeStr = config.get(CryptoConfigKey.KEY_SIZE);
+        int keySizeBytes = keySizeStr != null ? Integer.parseInt(keySizeStr) / 8 : 0;
+
         SymmetricCipher cipher = null;
         IntegrityCheck integrityCheck = null;
 
@@ -86,21 +93,10 @@ public class CipherSuiteFactory {
         if (cipherAlgo != null) {
             try {
                 if ("DPRG".equalsIgnoreCase(cipherAlgo)) {
-                    byte[] keyBytes;
-                    if (sharedSecret != null) {
-                        keyBytes = Utils.subArray(HashUtils.SHA3_512.digest(sharedSecret), 0, 16);
-                    } else {
-                        keyBytes = Utils.hexStringToByteArray(config.get(CryptoConfigKey.SYMMETRIC_KEY));
-                    }
+                    byte[] keyBytes = Utils.subArray(HashUtils.SHA3_512.digest(keyMaterial), 0, 16);
                     cipher = new MyStreamCipher(keyBytes);
                 } else {
-                    if (sharedSecret != null) {
-                        cipher = new ConfigurableCipher(cipherAlgo, sharedSecret, random);
-                    } else {
-                        String key = config.get(CryptoConfigKey.SYMMETRIC_KEY);
-                        String iv = config.get(CryptoConfigKey.IV);
-                        cipher = new ConfigurableCipher(cipherAlgo, key, iv, random);
-                    }
+                    cipher = new ConfigurableCipher(cipherAlgo, keyMaterial, keySizeBytes, random);
                 }
             } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
@@ -113,12 +109,7 @@ public class CipherSuiteFactory {
             String hashAlgo = config.get(CryptoConfigKey.H);
             String macAlgo = config.get(CryptoConfigKey.MAC);
             try {
-                if (sharedSecret != null) {
-                    integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, sharedSecret);
-                } else {
-                    String macKey = config.get(CryptoConfigKey.MAC_KEY);
-                    integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, macKey);
-                }
+                integrityCheck = new ConfigurableIntegrityCheck(isMac, hashAlgo, macAlgo, keyMaterial);
             } catch (GeneralSecurityException e) {
                 throw new RuntimeException(e);
             }

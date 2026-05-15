@@ -5,11 +5,10 @@ import java.util.Set;
 
 enum CryptoConfigKey {
     CONFIDENTIALITY("ciphersuite", "confidentiality"),
-    SYMMETRIC_KEY("key", "symmetric_key"),
-    IV("iv"),
+    SYMMETRIC_KEY("key", "symmetric_key", "seed"),
+    KEY_SIZE("keysize", "key_size"),
     INTEGRITY("integrity"),
     MAC("hmac", "mac"),
-    MAC_KEY("mackey", "mac_key"),
     H("h", "hash");
 
     private final Set<String> aliases;

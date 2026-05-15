@@ -58,21 +58,17 @@ class ConfigurableCipher implements SymmetricCipher {
     private CipherMode cipherMode;
     private final SecureRandom secureRandom;
 
-    ConfigurableCipher(String cipherAlgo, String hexKey, String hexIv, SecureRandom secureRandom)
+    ConfigurableCipher(String cipherAlgo, byte[] keyMaterial, SecureRandom secureRandom)
             throws NoSuchPaddingException, NoSuchAlgorithmException {
-        this.cipher = Cipher.getInstance(cipherAlgo);
-        setCipherMode(cipherAlgo);
-        setCipherKey(hexKey);
-        setCipherIv(hexIv);
-        this.secureRandom = secureRandom;
+        this(cipherAlgo, keyMaterial, 0, secureRandom);
     }
 
-    ConfigurableCipher(String cipherAlgo, byte[] sharedSecret, SecureRandom secureRandom)
+    ConfigurableCipher(String cipherAlgo, byte[] keyMaterial, int keySizeBytes, SecureRandom secureRandom)
             throws NoSuchPaddingException, NoSuchAlgorithmException {
         this.cipher = Cipher.getInstance(cipherAlgo);
         setCipherMode(cipherAlgo);
-        setCipherKey(sharedSecret);
-        setCipherIv(sharedSecret);
+        setCipherKey(keyMaterial, keySizeBytes);
+        setCipherIv(keyMaterial);
         this.secureRandom = secureRandom;
     }
 
@@ -85,45 +81,23 @@ class ConfigurableCipher implements SymmetricCipher {
         else cipherMode = CipherMode.NO_AEAD;
     }
 
-    private void setCipherKey(String hexValue) {
-        this.key = new SecretKeySpec(Utils.hexStringToByteArray(hexValue), getAlgorithm());
-    }
-
-    private void setCipherIv(String hexValue) {
-        if (hexValue != null) staticIvSpec = new IvParameterSpec(Utils.hexStringToByteArray(hexValue));
-    }
-
-    private void setCipherKey(byte[] sharedSecret) {
-        byte[] digest = HashUtils.SHA3_512.digest(sharedSecret);
+    private void setCipherKey(byte[] keyMaterial, int keySizeBytes) {
+        byte[] digest = HashUtils.SHA3_512.digest(keyMaterial);
         String algorithm = getAlgorithm();
-        switch (CipherParamSizes.permissiveValueOf(algorithm)) {
-            case AES -> key = new SecretKeySpec(digest, 0, CipherParamSizes.AES.getKeySize(), algorithm);
-            case BLOWFISH -> key = new SecretKeySpec(digest, 0, CipherParamSizes.BLOWFISH.getKeySize(), algorithm);
-            case CHACHA20 -> key = new SecretKeySpec(digest, 0, CipherParamSizes.CHACHA20.getKeySize(), algorithm);
-            case CHACHA20_POLY1305 -> key = new SecretKeySpec(digest, 0, CipherParamSizes.CHACHA20_POLY1305.getKeySize(), algorithm);
-            case DES -> key = new SecretKeySpec(digest, 0, CipherParamSizes.DES.getKeySize(), algorithm);
-            case TRIPLE_DES -> key = new SecretKeySpec(digest, 0, CipherParamSizes.TRIPLE_DES.getKeySize(), algorithm);
-            case IDEA -> key = new SecretKeySpec(digest, 0, CipherParamSizes.IDEA.getKeySize(), algorithm);
-            case RC4 -> key = new SecretKeySpec(digest, 0, CipherParamSizes.RC4.getKeySize(), algorithm);
-            case RC6 -> key = new SecretKeySpec(digest, 0, CipherParamSizes.RC6.getKeySize(), algorithm);
-            case null -> throw new IllegalStateException("Unsupported algorithm: " + algorithm);
-        }
+        CipherParamSizes params = CipherParamSizes.permissiveValueOf(algorithm);
+        if (params == null) throw new IllegalStateException("Unsupported algorithm: " + algorithm);
+        int size = keySizeBytes > 0 ? keySizeBytes : params.getKeySize();
+        key = new SecretKeySpec(digest, 0, size, algorithm);
     }
 
-    private void setCipherIv(byte[] sharedSecret) {
-        byte[] digest = HashUtils.SHA3_256.digest(sharedSecret);
+    private void setCipherIv(byte[] keyMaterial) {
+        byte[] digest = HashUtils.SHA3_256.digest(keyMaterial);
         if (cipher.getAlgorithm().contains("ECB")) { staticIvSpec = null; return; }
         String algorithm = getAlgorithm();
-        switch (CipherParamSizes.permissiveValueOf(algorithm)) {
-            case AES -> staticIvSpec = new IvParameterSpec(digest, 0, CipherParamSizes.AES.getIvSize());
-            case BLOWFISH -> staticIvSpec = new IvParameterSpec(digest, 0, CipherParamSizes.BLOWFISH.getIvSize());
-            case DES -> staticIvSpec = new IvParameterSpec(digest, 0, CipherParamSizes.DES.getIvSize());
-            case TRIPLE_DES -> staticIvSpec = new IvParameterSpec(digest, 0, CipherParamSizes.TRIPLE_DES.getIvSize());
-            case IDEA -> staticIvSpec = new IvParameterSpec(digest, 0, CipherParamSizes.IDEA.getIvSize());
-            case RC6 -> staticIvSpec = new IvParameterSpec(digest, 0, CipherParamSizes.RC6.getIvSize());
-            case CHACHA20, CHACHA20_POLY1305, RC4 -> staticIvSpec = null;
-            case null -> throw new IllegalStateException("Unsupported algorithm: " + algorithm);
-        }
+        CipherParamSizes params = CipherParamSizes.permissiveValueOf(algorithm);
+        if (params == null) throw new IllegalStateException("Unsupported algorithm: " + algorithm);
+        int ivSize = params.getIvSize();
+        staticIvSpec = ivSize > 0 ? new IvParameterSpec(digest, 0, ivSize) : null;
     }
 
     private String getAlgorithm() { return cipher.getAlgorithm().split("/")[0]; }

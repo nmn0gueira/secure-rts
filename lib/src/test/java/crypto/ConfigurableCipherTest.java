@@ -27,14 +27,14 @@ class ConfigurableCipherTest {
     }
 
     @Test
-    void aesGcmRoundtripHexKey() throws Exception {
-        var cipher = new ConfigurableCipher("AES/GCM/NoPadding", AES_KEY_HEX, null, new SecureRandom());
+    void aesGcmRoundtripSeed() throws Exception {
+        var cipher = new ConfigurableCipher("AES/GCM/NoPadding", AES_KEY_HEX.getBytes(), new SecureRandom());
         assertArrayEquals(PLAINTEXT, cipher.decrypt(cipher.encrypt(PLAINTEXT)));
     }
 
     @Test
-    void chacha20Poly1305RoundtripHexKey() throws Exception {
-        var cipher = new ConfigurableCipher("ChaCha20-Poly1305", CHACHA_KEY_HEX, null, new SecureRandom());
+    void chacha20Poly1305RoundtripSeed() throws Exception {
+        var cipher = new ConfigurableCipher("ChaCha20-Poly1305", CHACHA_KEY_HEX.getBytes(), new SecureRandom());
         assertArrayEquals(PLAINTEXT, cipher.decrypt(cipher.encrypt(PLAINTEXT)));
     }
 
@@ -54,14 +54,14 @@ class ConfigurableCipherTest {
 
     @Test
     void ciphertextDiffersFromPlaintext() throws Exception {
-        var cipher = new ConfigurableCipher("AES/GCM/NoPadding", AES_KEY_HEX, null, new SecureRandom());
+        var cipher = new ConfigurableCipher("AES/GCM/NoPadding", AES_KEY_HEX.getBytes(), new SecureRandom());
         byte[] encrypted = cipher.encrypt(PLAINTEXT);
         assertFalse(java.util.Arrays.equals(PLAINTEXT, encrypted));
     }
 
     @Test
     void twoEncryptionsProduceDifferentCiphertexts() throws Exception {
-        var cipher = new ConfigurableCipher("AES/GCM/NoPadding", AES_KEY_HEX, null, new SecureRandom());
+        var cipher = new ConfigurableCipher("AES/GCM/NoPadding", AES_KEY_HEX.getBytes(), new SecureRandom());
         byte[] c1 = cipher.encrypt(PLAINTEXT);
         byte[] c2 = cipher.encrypt(PLAINTEXT);
         assertFalse(java.util.Arrays.equals(c1, c2));
