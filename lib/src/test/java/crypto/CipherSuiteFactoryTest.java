@@ -171,8 +171,8 @@ class CipherSuiteFactoryTest {
     void hmacSha256StandaloneRoundtrip() throws Exception {
         byte[] key = new byte[32];
         IntegrityCheck ic = CipherSuiteFactory.hmacSha256(key);
-        byte[] proof = ic.createIntegrityProof(PLAINTEXT, new byte[0]);
+        byte[] proof = ic.createIntegrityProof(PLAINTEXT);
         assertEquals(32, proof.length);
-        assertTrue(ic.verifyIntegrity(PLAINTEXT, new byte[0], proof));
+        assertTrue(ic.verifyIntegrity(PLAINTEXT, proof));
     }
 }

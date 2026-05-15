@@ -6,6 +6,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
+import java.security.SecureRandom;
 
 enum MacMode {
     AESGMAC("AESGMAC"), RC6GMAC("RC6GMAC"),
@@ -24,6 +25,7 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
     private Mac mac;
     private Key hMacKey;
     private final boolean isMac;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     ConfigurableIntegrityCheck(boolean isMac, String hashAlgorithm, String macAlgorithm, byte[] keyMaterial)
             throws GeneralSecurityException {
@@ -33,14 +35,16 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
     }
 
     @Override
-    public byte[] createIntegrityProof(byte[] data, byte[] nonce) throws GeneralSecurityException {
+    public byte[] createIntegrityProof(byte[] data) throws GeneralSecurityException {
         if (isMac) {
             return switch (macMode) {
                 case HMAC -> mac.doFinal(data);
                 case AESGMAC, RC6GMAC, AESGMACFAST, RC6GMACFAST -> {
+                    byte[] gmacNonce = new byte[12];
+                    secureRandom.nextBytes(gmacNonce);
                     Mac freshMac = Mac.getInstance(mac.getAlgorithm());
-                    freshMac.init(hMacKey, new IvParameterSpec(Utils.fitToSize(nonce, 12)));
-                    yield freshMac.doFinal(data);
+                    freshMac.init(hMacKey, new IvParameterSpec(gmacNonce));
+                    yield Utils.concat(gmacNonce, freshMac.doFinal(data));
                 }
             };
         }
@@ -55,9 +59,20 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
         else macMode = MacMode.HMAC;
     }
 
+    @Override
+    public boolean verifyIntegrity(byte[] data, byte[] integrityProof) throws GeneralSecurityException {
+        if (isMac && macMode != MacMode.HMAC) {
+            byte[] gmacNonce = Utils.subArray(integrityProof, 0, 12);
+            byte[] tag = Utils.subArray(integrityProof, 12, integrityProof.length);
+            Mac freshMac = Mac.getInstance(mac.getAlgorithm());
+            freshMac.init(hMacKey, new IvParameterSpec(gmacNonce));
+            return MessageDigest.isEqual(freshMac.doFinal(data), tag);
+        }
+        return MessageDigest.isEqual(createIntegrityProof(data), integrityProof);
+    }
+
     private void setMacKey(byte[] keyMaterial) throws InvalidKeyException {
-        int keySize = getIntegrityProofSize();
-        byte[] derived = HashUtils.hkdf(keyMaterial, "mac-key", keySize);
+        byte[] derived = HashUtils.hkdf(keyMaterial, "mac-key", mac.getMacLength());
         switch (macMode) {
             case HMAC -> { hMacKey = new SecretKeySpec(derived, mac.getAlgorithm()); mac.init(hMacKey); }
             case AESGMAC, AESGMACFAST -> hMacKey = new SecretKeySpec(derived, "AES");
@@ -66,7 +81,10 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
     }
 
     @Override
-    public int getIntegrityProofSize() { return isMac ? mac.getMacLength() : hash.getDigestLength(); }
+    public int getIntegrityProofSize() {
+        if (!isMac) return hash.getDigestLength();
+        return macMode == MacMode.HMAC ? mac.getMacLength() : 12 + mac.getMacLength();
+    }
 
     @Override
     public boolean isMac() { return isMac; }

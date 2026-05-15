@@ -65,7 +65,7 @@ public class CipherSuiteFactory {
         mac.init(new SecretKeySpec(key, "HmacSHA256"));
         return new IntegrityCheck() {
             @Override
-            public byte[] createIntegrityProof(byte[] data, byte[] nonce) throws GeneralSecurityException {
+            public byte[] createIntegrityProof(byte[] data) throws GeneralSecurityException {
                 mac.update(data);
                 return mac.doFinal();
             }

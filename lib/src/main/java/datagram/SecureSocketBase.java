@@ -53,11 +53,10 @@ class SecureSocketBase {
                 payload = suite.cipher().encrypt(Utils.concat(seqNumBytes, data));
             } else if (suite.usesMac()) {
                 byte[] ciphertext = suite.cipher().encrypt(Utils.concat(seqNumBytes, data));
-                byte[] nonce = Utils.subArray(ciphertext, 0, Math.min(12, ciphertext.length));
-                byte[] proof = suite.integrityCheck().createIntegrityProof(ciphertext, nonce);
+                byte[] proof = suite.integrityCheck().createIntegrityProof(ciphertext);
                 payload = Utils.concat(ciphertext, proof);
             } else {
-                byte[] proof = suite.integrityCheck().createIntegrityProof(data, seqNumBytes);
+                byte[] proof = suite.integrityCheck().createIntegrityProof(data);
                 payload = suite.cipher().encrypt(Utils.concat(seqNumBytes, data, proof));
             }
 
@@ -107,8 +106,7 @@ class SecureSocketBase {
                 int macSize = suite.integrityProofSize();
                 byte[] ciphertext = Utils.subArray(payload, 0, payload.length - macSize);
                 byte[] proof = Utils.subArray(payload, payload.length - macSize, payload.length);
-                byte[] nonce = Utils.subArray(ciphertext, 0, Math.min(12, ciphertext.length));
-                if (!suite.integrityCheck().verifyIntegrity(ciphertext, nonce, proof)) {
+                if (!suite.integrityCheck().verifyIntegrity(ciphertext, proof)) {
                     LOGGER.severe("MAC verification failed");
                     return false;
                 }
@@ -120,7 +118,7 @@ class SecureSocketBase {
                 receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length - hashSize);
                 byte[] seqNumBytes = Utils.subArray(decryptedData, 0, 2);
                 byte[] proof = Utils.subArray(decryptedData, decryptedData.length - hashSize, decryptedData.length);
-                if (!suite.integrityCheck().verifyIntegrity(receivedMessage, seqNumBytes, proof)) {
+                if (!suite.integrityCheck().verifyIntegrity(receivedMessage, proof)) {
                     LOGGER.severe("Hash verification failed");
                     return false;
                 }

@@ -5,12 +5,12 @@ import java.security.MessageDigest;
 
 public interface IntegrityCheck {
 
-    byte[] createIntegrityProof(byte[] data, byte[] nonce) throws GeneralSecurityException;
+    byte[] createIntegrityProof(byte[] data) throws GeneralSecurityException;
 
     int getIntegrityProofSize();
 
-    default boolean verifyIntegrity(byte[] data, byte[] nonce, byte[] integrityProof) throws GeneralSecurityException {
-        return MessageDigest.isEqual(createIntegrityProof(data, nonce), integrityProof);
+    default boolean verifyIntegrity(byte[] data, byte[] integrityProof) throws GeneralSecurityException {
+        return MessageDigest.isEqual(createIntegrityProof(data), integrityProof);
     }
 
     boolean isMac();
