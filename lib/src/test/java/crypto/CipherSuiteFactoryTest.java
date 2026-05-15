@@ -12,7 +12,6 @@ class CipherSuiteFactoryTest {
 
     private static final String AES_KEY_HEX =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-    private static final String HMAC_KEY_HEX = "0102030405060708090a0b0c0d0e0f10";
     private static final byte[] PLAINTEXT = "factory test plaintext".getBytes();
 
     @Test
@@ -56,8 +55,7 @@ class CipherSuiteFactoryTest {
         String config = "CONFIDENTIALITY:AES/GCM/NoPadding\n"
                 + "SYMMETRIC_KEY:" + AES_KEY_HEX + "\n"
                 + "INTEGRITY:MAC\n"
-                + "MAC:HmacSHA256\n"
-                + "MAC_KEY:" + HMAC_KEY_HEX + "\n";
+                + "MAC:HmacSHA256\n";
         CipherSuite suite = CipherSuiteFactory.fromConfig(config, null);
 
         assertTrue(suite.hasIntegrityCheck());
@@ -72,7 +70,6 @@ class CipherSuiteFactoryTest {
                 + "key: " + AES_KEY_HEX + "\n"
                 + "integrity: MAC\n"
                 + "hmac: HMACSHA256\n"
-                + "mackey: " + HMAC_KEY_HEX + "\n"
                 + "</cars.dat.encrypted>\n";
         CipherSuite suite = CipherSuiteFactory.fromConfig(config, null);
 

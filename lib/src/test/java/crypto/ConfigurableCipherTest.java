@@ -11,10 +11,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigurableCipherTest {
 
-    // 32-byte AES-256 key (64 hex chars)
     private static final String AES_KEY_HEX =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-    // 32-byte ChaCha20 key
     private static final String CHACHA_KEY_HEX =
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
     private static final byte[] PLAINTEXT = "Configurable cipher roundtrip".getBytes();

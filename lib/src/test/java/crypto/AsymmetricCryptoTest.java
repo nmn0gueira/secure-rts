@@ -25,8 +25,6 @@ class AsymmetricCryptoTest {
         ecKeyPair2 = gen.generateKeyPair();
     }
 
-    // --- EciesCipher ---
-
     @Test
     void eciesEncryptDecryptRoundtrip() throws Exception {
         byte[] plaintext = "ECIES roundtrip test".getBytes();
@@ -62,8 +60,6 @@ class AsymmetricCryptoTest {
         byte[] encrypted = cipher.encrypt(plaintext, ecKeyPair1.getPublic());
         assertFalse(java.util.Arrays.equals(plaintext, encrypted));
     }
-
-    // --- EcdsaSignature ---
 
     @Test
     void ecdsaSignAndVerify() throws Exception {

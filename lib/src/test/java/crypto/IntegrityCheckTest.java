@@ -12,7 +12,6 @@ class IntegrityCheckTest {
 
     private static final String HMAC_KEY_HEX = "0102030405060708090a0b0c0d0e0f10";
     private static final byte[] DATA = "integrity check test data".getBytes();
-    private static final byte[] NONCE = new byte[16];
 
     @BeforeAll
     static void setupBc() {

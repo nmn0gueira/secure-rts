@@ -111,7 +111,6 @@ public class SharedConfigTest {
         }
     }
 
-    // Worth noting that test configs that use nonces based on the sequence number will fail (and that is okay)
     @ParameterizedTest
     @MethodSource("configFilesProvider")
     public void testMessageReplaying(String config) throws Exception {
@@ -210,7 +209,6 @@ public class SharedConfigTest {
     }
 
     static Stream<String> configFilesProvider() throws IOException, URISyntaxException {
-        // Directory where your config files are stored
         Path configDir = Paths.get(Objects.requireNonNull(FixedConfigTest.class.getClassLoader().getResource("test-configs/shared")).toURI());
         // Get file contents as a stream of strings
         return Files.list(configDir)
