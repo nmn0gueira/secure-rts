@@ -186,7 +186,7 @@ public class FixedConfigTest {
             sequenceNumberField.setAccessible(true); // Make it accessible
 
             // Set sequence number to simulate a message replay attack
-            sequenceNumberField.setInt(secureSocketBase, 0);
+            sequenceNumberField.setLong(secureSocketBase, 0L);
 
             clientSocket.send(sendPacket);
         }

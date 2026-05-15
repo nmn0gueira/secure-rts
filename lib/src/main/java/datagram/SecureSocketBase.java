@@ -6,6 +6,7 @@ import crypto.CipherSuite;
 import javax.crypto.AEADBadTagException;
 import javax.crypto.BadPaddingException;
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.HashSet;
 import java.util.Set;
@@ -20,9 +21,8 @@ class SecureSocketBase {
     private static final int RTSSP_HEADER_SIZE = 5;
 
     private final CipherSuite suite;
-    private long timestamp;
-    private int sequenceNumber;
-    private final Set<Integer> receivedSequenceNumbers;
+    private long sequenceNumber;
+    private final Set<Long> receivedSequenceNumbers;
     private static final Logger LOGGER = Logger.getLogger(SecureSocketBase.class.getName());
 
     private final byte[] header = new byte[]{
@@ -35,18 +35,14 @@ class SecureSocketBase {
 
     protected SecureSocketBase(CipherSuite suite) {
         this.suite = suite;
-        this.timestamp = System.currentTimeMillis();
         this.receivedSequenceNumbers = new HashSet<>();
         LOGGER.setLevel(Level.OFF);
     }
 
     protected void preparePacketForSend(DatagramPacket packet) {
         try {
-            byte[] seqNumBytes = new byte[]{(byte) timestamp, (byte) sequenceNumber};
+            byte[] seqNumBytes = ByteBuffer.allocate(8).putLong(sequenceNumber++).array();
             byte[] data = Utils.subArray(packet.getData(), packet.getOffset(), packet.getLength());
-
-            sequenceNumber++;
-            if (sequenceNumber == 256) { sequenceNumber = 0; timestamp++; }
 
             byte[] payload;
             if (!suite.hasIntegrityCheck()) {
@@ -101,7 +97,7 @@ class SecureSocketBase {
         try {
             if (!suite.hasIntegrityCheck()) {
                 decryptedData = suite.cipher().decrypt(payload);
-                receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length);
+                receivedMessage = Utils.subArray(decryptedData, 8, decryptedData.length);
             } else if (suite.usesMac()) {
                 int macSize = suite.integrityProofSize();
                 byte[] ciphertext = Utils.subArray(payload, 0, payload.length - macSize);
@@ -111,12 +107,11 @@ class SecureSocketBase {
                     return false;
                 }
                 decryptedData = suite.cipher().decrypt(ciphertext);
-                receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length);
+                receivedMessage = Utils.subArray(decryptedData, 8, decryptedData.length);
             } else {
                 decryptedData = suite.cipher().decrypt(payload);
                 int hashSize = suite.integrityProofSize();
-                receivedMessage = Utils.subArray(decryptedData, 2, decryptedData.length - hashSize);
-                byte[] seqNumBytes = Utils.subArray(decryptedData, 0, 2);
+                receivedMessage = Utils.subArray(decryptedData, 8, decryptedData.length - hashSize);
                 byte[] proof = Utils.subArray(decryptedData, decryptedData.length - hashSize, decryptedData.length);
                 if (!suite.integrityCheck().verifyIntegrity(receivedMessage, proof)) {
                     LOGGER.severe("Hash verification failed");
@@ -134,8 +129,7 @@ class SecureSocketBase {
             return false;
         }
 
-        byte[] seqNumBytes = Utils.subArray(decryptedData, 0, 2);
-        int seqNum = ((seqNumBytes[0] & 0xFF) << 8) | (seqNumBytes[1] & 0xFF);
+        long seqNum = ByteBuffer.wrap(decryptedData, 0, 8).getLong();
         if (!receivedSequenceNumbers.add(seqNum)) {
             LOGGER.severe("Duplicate sequence number: " + seqNum);
             return false;
