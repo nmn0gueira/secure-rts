@@ -73,8 +73,7 @@ public class ShpServer extends AbstractShpPeer {
             return new ShpServerOutput(
                     protocol.getUserRequest(),
                     protocol.getUdpPort(),
-                    protocol.getSelectedSuiteConfig(),
-                    protocol.getSharedSecret());
+                    protocol.getCipherSuite());
         } finally {
             closeConnection();
         }

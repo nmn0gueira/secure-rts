@@ -1,7 +1,6 @@
 package server;
 
 import crypto.CipherSuite;
-import crypto.CipherSuiteFactory;
 import datagram.SecureDatagramSocket;
 import datagram.StreamControl;
 import shp.AbstractShpPeer;
@@ -62,7 +61,7 @@ public class Part2Main {
                 System.out.println("SHP complete. Streaming '" + movieName + "' to "
                         + multicastAddr + ":" + out.udpPort());
 
-                CipherSuite suite = CipherSuiteFactory.fromConfig(out.cryptoConfig(), out.sharedSecret());
+                CipherSuite suite = out.cipherSuite();
                 streamMovie(movieFile, suite, multicastAddr, out.udpPort());
 
             } catch (Exception e) {

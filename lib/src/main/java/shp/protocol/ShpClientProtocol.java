@@ -38,8 +38,7 @@ public class ShpClientProtocol {
 
     private final Set<ByteBuffer> noncesReceived = new HashSet<>();
 
-    private String cryptoConfig;
-    private byte[] sharedSecret;
+    private CipherSuite cipherSuite;
     private byte[] clientNonce;
 
     public ShpClientProtocol(ShpCryptoSpec cryptoSpec, KeyStore trustStore,
@@ -96,7 +95,7 @@ public class ShpClientProtocol {
                 LOGGER.severe("Server selected unsupported cipher suite: " + suiteName);
                 return ShpProtocolResult.error();
             }
-            cryptoConfig = supportedSuites.get(suiteName);
+            String cryptoConfig = supportedSuites.get(suiteName);
 
             var serverCertificate = CertificateUtils.decodeCertificate(msg.serverCertificate());
 
@@ -124,19 +123,19 @@ public class ShpClientProtocol {
             }
 
             PublicKey serverEcdhPublicKey = ShpCryptoSpec.loadPublicKey(msg.serverEcdhPublicKey());
-            sharedSecret = cryptoSpec.generateSharedSecret(serverEcdhPublicKey);
+            byte[] sharedSecret = cryptoSpec.generateSharedSecret(serverEcdhPublicKey);
 
-            CipherSuite suite = CipherSuiteFactory.fromConfig(cryptoConfig, sharedSecret);
+            cipherSuite = CipherSuiteFactory.fromConfig(cryptoConfig, sharedSecret);
 
             byte[] serverNonceResponse = Utils.getIncrementedBytes(msg.serverNonce());
             byte[] plaintext = Utils.concat(serverNonceResponse, udpPortBytes);
 
-            byte[] encryptedPayload = suite.cipher().encrypt(plaintext);
+            byte[] encryptedPayload = cipherSuite.cipher().encrypt(plaintext);
             byte[] integrityProof;
-            if (suite.hasIntegrityCheck()) {
-                integrityProof = suite.usesMac()
-                        ? suite.integrityCheck().createIntegrityProof(encryptedPayload, msg.serverNonce())
-                        : suite.integrityCheck().createIntegrityProof(plaintext, null);
+            if (cipherSuite.hasIntegrityCheck()) {
+                integrityProof = cipherSuite.usesMac()
+                        ? cipherSuite.integrityCheck().createIntegrityProof(encryptedPayload)
+                        : cipherSuite.integrityCheck().createIntegrityProof(plaintext);
             }
             else
                 integrityProof = new byte[0];
@@ -152,8 +151,7 @@ public class ShpClientProtocol {
         }
     }
 
-    public String getCryptoConfig() { return cryptoConfig; }
-    public byte[] getSharedSecret() { return sharedSecret; }
+    public CipherSuite getCipherSuite() { return cipherSuite; }
 
     private byte[] makeHeader(MsgType type) {
         return new byte[]{ (byte) (SHP_VERSION << 4 | SHP_RELEASE), (byte) type.ordinal() };

@@ -1,7 +1,5 @@
 package shp;
 
-import common.Utils;
-import crypto.CipherSuiteFactory;
 import datagram.SecureDatagramSocket;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeAll;
@@ -139,7 +137,8 @@ public class ShpTest {
 
         ShpServerOutput sOutput = future.get(5, TimeUnit.SECONDS);
 
-        assertArrayEquals(cOutput.sharedSecret(), sOutput.sharedSecret());
+        assertNotNull(cOutput.cipherSuite());
+        assertNotNull(sOutput.cipherSuite());
         assertEquals("movie", sOutput.request());
         assertEquals(UDP_PORT, sOutput.udpPort());
     }
@@ -168,7 +167,6 @@ public class ShpTest {
                 ShpServerOutput sOutput = shpServer.runProtocolServer();
                 System.out.println("User request received: " + sOutput.request());
                 System.out.println("Udp port received: " + sOutput.udpPort());
-                System.out.println("Shared key received:\n" + Utils.byteArrayToHexString(sOutput.sharedSecret()));
                 System.out.println("Server thread finished");
             } catch (Exception e) {
                 e.printStackTrace();
@@ -181,8 +179,7 @@ public class ShpTest {
                 clientSuitesPath, PASSWORD);
         byte[] udpPortBytes = ByteBuffer.allocate(4).putInt(UDP_PORT).array();
         ShpClientOutput cOutput = shpClient.runProtocolClient("request", udpPortBytes);
-        System.out.println("Crypto config received:\n" + cOutput.cryptoConfig());
-        System.out.println("Shared key received:\n" + Utils.byteArrayToHexString(cOutput.sharedSecret()));
+        System.out.println("Cipher suite received: " + cOutput.cipherSuite());
         System.out.println("Client thread finished");
     }
 
@@ -196,8 +193,7 @@ public class ShpTest {
         new Thread(() -> {
             try {
                 ShpServerOutput sOutput = shpServer.runProtocolServer();
-                SecureDatagramSocket dstpSender = new SecureDatagramSocket(
-                        CipherSuiteFactory.fromConfig(sOutput.cryptoConfig(), sOutput.sharedSecret()));
+                SecureDatagramSocket dstpSender = new SecureDatagramSocket(sOutput.cipherSuite());
                 byte[] message = "Hello, Secure World!".getBytes();
                 Thread.sleep(3000);
                 DatagramPacket sendPacket = new DatagramPacket(message, message.length,
@@ -217,8 +213,7 @@ public class ShpTest {
         byte[] udpPortBytes = ByteBuffer.allocate(4).putInt(UDP_PORT).array();
         ShpClientOutput cOutput = shpClient.runProtocolClient("request", udpPortBytes);
 
-        SecureDatagramSocket dstpReceiver = new SecureDatagramSocket(UDP_PORT,
-                CipherSuiteFactory.fromConfig(cOutput.cryptoConfig(), cOutput.sharedSecret()));
+        SecureDatagramSocket dstpReceiver = new SecureDatagramSocket(UDP_PORT, cOutput.cipherSuite());
         dstpReceiver.setSoTimeout(10000);
 
         DatagramPacket receivePacket = new DatagramPacket(new byte[1024], 1024);

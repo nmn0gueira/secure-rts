@@ -51,7 +51,7 @@ public class ShpClient extends AbstractShpPeer {
             if (response == null)
                 throw new RuntimeException("SHP timeout on initial server response");
             runProtocol(response);
-            return new ShpClientOutput(protocol.getCryptoConfig(), protocol.getSharedSecret());
+            return new ShpClientOutput(protocol.getCipherSuite());
         } finally {
             closeConnection();
         }

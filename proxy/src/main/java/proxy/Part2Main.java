@@ -1,7 +1,6 @@
 package proxy;
 
 import crypto.CipherSuite;
-import crypto.CipherSuiteFactory;
 import datagram.SecureDatagramSocket;
 import datagram.StreamControl;
 import shp.client.ShpClient;
@@ -48,7 +47,7 @@ public class Part2Main {
         System.out.println("SHP complete. Receiving '" + movieName + "' on " + remote
                 + ", forwarding to " + destinations + " ...");
 
-        CipherSuite suite = CipherSuiteFactory.fromConfig(out.cryptoConfig(), out.sharedSecret());
+        CipherSuite suite = out.cipherSuite();
 
         SocketAddress inAddr = parseSocketAddress(remote);
         Set<SocketAddress> outAddrs = Arrays.stream(destinations.split(","))

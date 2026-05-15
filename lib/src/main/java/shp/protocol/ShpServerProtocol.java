@@ -47,6 +47,7 @@ public class ShpServerProtocol {
 
     private String selectedSuiteName;
     private String selectedSuiteConfig;
+    private CipherSuite selectedCipherSuite;
 
     public ShpServerProtocol(ShpCryptoSpec cryptoSpec, KeyStore trustStore, Set<String> validRequests) {
         this.cryptoSpec = cryptoSpec;
@@ -155,16 +156,16 @@ public class ShpServerProtocol {
         LOGGER.info("Received CLIENT_FINISH.");
 
         try {
-            CipherSuite suite = CipherSuiteFactory.fromConfig(selectedSuiteConfig, sharedSecret);
+            selectedCipherSuite = CipherSuiteFactory.fromConfig(selectedSuiteConfig, sharedSecret);
 
             byte[] decryptedPayload = null;
-            if (suite.hasIntegrityCheck()) {
+            if (selectedCipherSuite.hasIntegrityCheck()) {
                 boolean validIntegrity;
-                if (suite.usesMac())
-                    validIntegrity = suite.integrityCheck().verifyIntegrity(msg.encryptedPayload(), serverNonce, msg.integrityProof());
+                if (selectedCipherSuite.usesMac())
+                    validIntegrity = selectedCipherSuite.integrityCheck().verifyIntegrity(msg.encryptedPayload(), msg.integrityProof());
                 else {
-                    decryptedPayload = suite.cipher().decrypt(msg.encryptedPayload());
-                    validIntegrity = suite.integrityCheck().verifyIntegrity(decryptedPayload, null, msg.integrityProof());
+                    decryptedPayload = selectedCipherSuite.cipher().decrypt(msg.encryptedPayload());
+                    validIntegrity = selectedCipherSuite.integrityCheck().verifyIntegrity(decryptedPayload, msg.integrityProof());
                 }
 
                 if (!validIntegrity) {
@@ -174,7 +175,7 @@ public class ShpServerProtocol {
             }
 
             if (decryptedPayload == null) // we will have already decrypted the payload if we needed to do it for the integrity check
-                decryptedPayload = suite.cipher().decrypt(msg.encryptedPayload());
+                decryptedPayload = selectedCipherSuite.cipher().decrypt(msg.encryptedPayload());
 
             byte[][] parts = Utils.divideInParts(
                     decryptedPayload,
@@ -215,8 +216,7 @@ public class ShpServerProtocol {
 
     public String getUserRequest() { return userRequest; }
     public int getUdpPort() { return udpPort; }
-    public byte[] getSharedSecret() { return sharedSecret; }
-    public String getSelectedSuiteConfig() { return selectedSuiteConfig; }
+    public CipherSuite getCipherSuite() { return selectedCipherSuite; }
 
     private byte[] makeHeader(MsgType type) {
         return new byte[] { (byte) (SHP_VERSION << 4 | SHP_RELEASE), (byte) type.ordinal() };

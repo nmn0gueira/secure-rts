@@ -1,4 +1,6 @@
 package shp.client;
 
-public record ShpClientOutput(String cryptoConfig, byte[] sharedSecret) {
+import crypto.CipherSuite;
+
+public record ShpClientOutput(CipherSuite cipherSuite) {
 }
