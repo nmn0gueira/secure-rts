@@ -6,7 +6,7 @@ import crypto.CipherSuiteFactory;
 import crypto.CertificateUtils;
 import shp.message.ShpClientHello;
 import shp.message.ShpServerHello;
-import shp.message.ShpClientFinish;
+import shp.message.ShpCssp;
 import shp.ShpCryptoSpec;
 import shp.ShpMessage;
 
@@ -68,7 +68,7 @@ public class ShpServerProtocol {
 
         return switch (type) {
             case CLIENT_HELLO -> handleClientHello(ShpClientHello.from(message));
-            case CLIENT_FINISH -> handleClientFinish(ShpClientFinish.from(message));
+            case CSSP -> handleCssp(ShpCssp.from(message));
             default -> {
                 LOGGER.severe("Unexpected message type: " + type);
                 yield ShpProtocolResult.error();
@@ -152,8 +152,8 @@ public class ShpServerProtocol {
         }
     }
 
-    private ShpProtocolResult handleClientFinish(ShpClientFinish msg) {
-        LOGGER.info("Received CLIENT_FINISH.");
+    private ShpProtocolResult handleCssp(ShpCssp msg) {
+        LOGGER.info("Received CSSP.");
 
         try {
             selectedCipherSuite = CipherSuiteFactory.fromConfig(selectedSuiteConfig, sharedSecret);
@@ -169,7 +169,7 @@ public class ShpServerProtocol {
                 }
 
                 if (!validIntegrity) {
-                    LOGGER.severe("CLIENT_FINISH integrity check failed");
+                    LOGGER.severe("CSSP integrity check failed");
                     return ShpProtocolResult.error();
                 }
             }
@@ -201,7 +201,7 @@ public class ShpServerProtocol {
             return ShpProtocolResult.finished();
 
         } catch (GeneralSecurityException | RuntimeException e) {
-            LOGGER.log(Level.SEVERE, "Unexpected error in CLIENT_FINISH.", e);
+            LOGGER.log(Level.SEVERE, "Unexpected error in CSSP.", e);
             return ShpProtocolResult.error();
         }
     }

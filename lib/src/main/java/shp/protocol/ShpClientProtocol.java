@@ -7,7 +7,7 @@ import crypto.CipherSuiteFactory;
 import shp.ShpCryptoSpec;
 import shp.ShpMessage;
 import shp.message.ShpClientHello;
-import shp.message.ShpClientFinish;
+import shp.message.ShpCssp;
 import shp.message.ShpServerHello;
 
 import java.nio.ByteBuffer;
@@ -140,10 +140,10 @@ public class ShpClientProtocol {
             else
                 integrityProof = new byte[0];
 
-            ShpClientFinish finish = new ShpClientFinish(encryptedPayload, integrityProof);
+            ShpCssp finish = new ShpCssp(encryptedPayload, integrityProof);
 
-            LOGGER.info("Sent CLIENT_FINISH.");
-            return ShpProtocolResult.finished(finish.toShpMessage(makeHeader(MsgType.CLIENT_FINISH)));
+            LOGGER.info("Sent CSSP.");
+            return ShpProtocolResult.finished(finish.toShpMessage(makeHeader(MsgType.CSSP)));
 
         } catch (GeneralSecurityException e) {
             LOGGER.log(Level.SEVERE, "Error handling SERVER_HELLO.", e);

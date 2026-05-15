@@ -4,7 +4,7 @@ import shp.ShpMessage;
 
 import java.util.List;
 
-public record ShpClientFinish(byte[] encryptedPayload, byte[] integrityProof) {
+public record ShpCssp(byte[] encryptedPayload, byte[] integrityProof) {
 
     private static final int PAYLOAD_SIZE = 2;
 
@@ -14,14 +14,14 @@ public record ShpClientFinish(byte[] encryptedPayload, byte[] integrityProof) {
                 integrityProof));
     }
 
-    public static ShpClientFinish from(ShpMessage message) {
+    public static ShpCssp from(ShpMessage message) {
         List<byte[]> payload = message.getPayload();
 
         if (payload.size() != PAYLOAD_SIZE) {
-            throw new IllegalArgumentException("Invalid ClientFinish payload size");
+            throw new IllegalArgumentException("Invalid CSSP payload size");
         }
 
-        return new ShpClientFinish(
+        return new ShpCssp(
                 payload.get(0),
                 payload.get(1));
     }

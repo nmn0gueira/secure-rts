@@ -3,7 +3,7 @@ package shp.protocol;
 public enum MsgType {
     CLIENT_HELLO,
     SERVER_HELLO,
-    CLIENT_FINISH,
+    CSSP,
     SERVER_ERROR;
 
     public static MsgType from(byte[] header) {

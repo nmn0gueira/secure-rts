@@ -70,12 +70,12 @@ class ShpMessagesTest {
     }
 
     @Test
-    void clientFinishRoundtrip() {
-        ShpClientFinish finish = new ShpClientFinish(
+    void csspRoundtrip() {
+        ShpCssp finish = new ShpCssp(
                 new byte[] { 1, 2, 3 },
                 new byte[] { 4, 5 });
 
-        ShpClientFinish parsed = ShpClientFinish.from(finish.toShpMessage(new byte[] { 1, 2 }));
+        ShpCssp parsed = ShpCssp.from(finish.toShpMessage(new byte[] { 1, 2 }));
 
         assertArrayEquals(finish.encryptedPayload(), parsed.encryptedPayload());
         assertArrayEquals(finish.integrityProof(), parsed.integrityProof());
