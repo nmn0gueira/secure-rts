@@ -1,39 +1,61 @@
 # Secure Real Time Streaming
 
-## Compile
+## Structure
+
 ```
-mvn clean compile package -DskipTests
+secure-rts/
+├── lib/                         # Shared library
+│   └── src/main/java/
+│       ├── common/              # Utility functions
+│       ├── crypto/              # Cipher suites, integrity checks, PKI utilities
+│       ├── datagram/            # RTSSP secure datagram framing (Part 1)
+│       └── shp/                 # SHP handshake protocol (Part 2)
+├── server/                      # Streams .dat files over secure UDP
+│   ├── crypto/                  # Per-movie crypto configs (Part 1)
+│   ├── suites/                  # Per-movie cipher suite lists (Part 2)
+│   └── src/main/java/server/
+│       ├── Part1Main.java
+│       └── Part2Main.java
+├── proxy/                       # Receives stream, decrypts, forwards to media player
+│   ├── crypto/                  # Per-movie crypto configs (Part 1)
+│   ├── cipher-suites.conf       # Advertised cipher suites (Part 2)
+│   └── src/main/java/proxy/
+│       ├── Part1Main.java
+│       └── Part2Main.java
+├── client/                      # Media player launch scripts (VLC / MPV)
+├── scripts/                     # PKI setup (generate-shp-stores.sh)
+└── STRUCTURE.md                 # Full file-by-file breakdown by part
 ```
 
-## Generate local SHP certificates
-The generated stores are local artefacts and should not be committed. They are written to `local/shp-stores`.
+## Build
+```
+mvn clean package -DskipTests
+```
 
+## Setup (Part 2)
 ```
 bash scripts/generate-shp-stores.sh
 ```
 
-Use `--force` to regenerate existing stores.
-
 ## Run
-### Server
+
+### Part 1
 ```
-java -jar server/target/server-1.0.0-SNAPSHOT-jar-with-dependencies.jar movies/cars.dat 127.0.0.1 8888
+java -cp server/target/server-jar-with-dependencies.jar server.Part1Main <multicast-addr> <multicast-port> <tcp-port>
+java -cp proxy/target/proxy-jar-with-dependencies.jar proxy.Part1Main <server-host> <tcp-port> <movie>
 ```
 
-### Proxy
-
+### Part 2
 ```
-java -jar proxy/target/proxy-1.0.0-SNAPSHOT-jar-with-dependencies.jar
-```
-
-### Video Player
-#### MPV
-```
-client/run-mpv.sh
+java -cp server/target/server-jar-with-dependencies.jar server.Part2Main <multicast-addr> <shp-port>
+java -cp proxy/target/proxy-jar-with-dependencies.jar proxy.Part2Main <server-host> <shp-port> <movie>
 ```
 
-#### VLC
+### Media player
+```
+client/run-mpv.sh   
+```
+or
 ```
 client/run-vlc.sh
 ```
-
