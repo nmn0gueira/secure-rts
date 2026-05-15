@@ -54,7 +54,6 @@ class ConfigurableCipher implements SymmetricCipher {
 
     private final Cipher cipher;
     private SecretKey key;
-    private IvParameterSpec staticIvSpec;
     private CipherMode cipherMode;
     private final SecureRandom secureRandom;
 
@@ -68,7 +67,6 @@ class ConfigurableCipher implements SymmetricCipher {
         this.cipher = Cipher.getInstance(cipherAlgo);
         setCipherMode(cipherAlgo);
         setCipherKey(keyMaterial, keySizeBytes);
-        setCipherIv(keyMaterial);
         this.secureRandom = secureRandom;
     }
 
@@ -82,22 +80,24 @@ class ConfigurableCipher implements SymmetricCipher {
     }
 
     private void setCipherKey(byte[] keyMaterial, int keySizeBytes) {
-        byte[] digest = HashUtils.SHA3_512.digest(keyMaterial);
         String algorithm = getAlgorithm();
         CipherParamSizes params = CipherParamSizes.permissiveValueOf(algorithm);
         if (params == null) throw new IllegalStateException("Unsupported algorithm: " + algorithm);
         int size = keySizeBytes > 0 ? keySizeBytes : params.getKeySize();
-        key = new SecretKeySpec(digest, 0, size, algorithm);
+        key = new SecretKeySpec(HashUtils.hkdf(keyMaterial, "cipher-key", size), algorithm);
     }
 
-    private void setCipherIv(byte[] keyMaterial) {
-        byte[] digest = HashUtils.SHA3_256.digest(keyMaterial);
-        if (cipher.getAlgorithm().contains("ECB")) { staticIvSpec = null; return; }
-        String algorithm = getAlgorithm();
-        CipherParamSizes params = CipherParamSizes.permissiveValueOf(algorithm);
-        if (params == null) throw new IllegalStateException("Unsupported algorithm: " + algorithm);
-        int ivSize = params.getIvSize();
-        staticIvSpec = ivSize > 0 ? new IvParameterSpec(digest, 0, ivSize) : null;
+    private static byte[] manualPad(byte[] data, int blockSize) {
+        int padding = blockSize - (data.length % blockSize);
+        byte[] padded = new byte[data.length + padding];
+        System.arraycopy(data, 0, padded, 0, data.length);
+        for (int i = data.length; i < padded.length; i++) padded[i] = (byte) padding;
+        return padded;
+    }
+
+    private static byte[] manualUnpad(byte[] data) {
+        int padding = data[data.length - 1];
+        return Utils.subArray(data, 0, data.length - padding);
     }
 
     private String getAlgorithm() { return cipher.getAlgorithm().split("/")[0]; }
@@ -114,26 +114,31 @@ class ConfigurableCipher implements SymmetricCipher {
                     cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(nonce));
                 else
                     cipher.init(Cipher.ENCRYPT_MODE, key, new ChaCha20ParameterSpec(nonce, 0));
-                byte[] ciphertext = cipher.doFinal(data);
-                byte[] combined = new byte[nonce.length + ciphertext.length];
-                System.arraycopy(nonce, 0, combined, 0, nonce.length);
-                System.arraycopy(ciphertext, 0, combined, nonce.length, ciphertext.length);
-                yield combined;
+                yield Utils.concat(nonce, cipher.doFinal(data));
             }
-            case MANUAL_PADDING_CBC, MANUAL_PADDING_ECB -> {
+            case MANUAL_PADDING_CBC -> {
                 int blockSize = cipher.getBlockSize();
-                int padding = blockSize - (data.length % blockSize);
-                byte[] paddedData = new byte[data.length + padding];
-                System.arraycopy(data, 0, paddedData, 0, data.length);
-                for (int i = data.length; i < paddedData.length; i++) paddedData[i] = (byte) padding;
-                if (cipherMode == CipherMode.MANUAL_PADDING_CBC) cipher.init(Cipher.ENCRYPT_MODE, key, staticIvSpec);
-                else cipher.init(Cipher.ENCRYPT_MODE, key);
-                yield cipher.doFinal(paddedData);
+                byte[] iv = new byte[blockSize];
+                secureRandom.nextBytes(iv);
+                cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
+                yield Utils.concat(iv, cipher.doFinal(manualPad(data, blockSize)));
+            }
+            case MANUAL_PADDING_ECB -> {
+                int blockSize = cipher.getBlockSize();
+                cipher.init(Cipher.ENCRYPT_MODE, key);
+                yield cipher.doFinal(manualPad(data, blockSize));
             }
             case NO_AEAD -> {
-                if (staticIvSpec != null) cipher.init(Cipher.ENCRYPT_MODE, key, staticIvSpec);
-                else cipher.init(Cipher.ENCRYPT_MODE, key);
-                yield cipher.doFinal(data);
+                int blockSize = cipher.getBlockSize();
+                if (blockSize > 0 && !cipher.getAlgorithm().contains("ECB")) {
+                    byte[] iv = new byte[blockSize];
+                    secureRandom.nextBytes(iv);
+                    cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
+                    yield Utils.concat(iv, cipher.doFinal(data));
+                } else {
+                    cipher.init(Cipher.ENCRYPT_MODE, key);
+                    yield cipher.doFinal(data);
+                }
             }
         };
     }
@@ -142,10 +147,8 @@ class ConfigurableCipher implements SymmetricCipher {
     public byte[] decrypt(byte[] encryptedData) throws GeneralSecurityException {
         return switch (cipherMode) {
             case GCM, CHACHA20_POLY1305, CHACHA20 -> {
-                byte[] nonce = new byte[12];
-                System.arraycopy(encryptedData, 0, nonce, 0, nonce.length);
-                byte[] ciphertext = new byte[encryptedData.length - nonce.length];
-                System.arraycopy(encryptedData, nonce.length, ciphertext, 0, ciphertext.length);
+                byte[] nonce = Utils.subArray(encryptedData, 0, 12);
+                byte[] ciphertext = Utils.subArray(encryptedData, 12, encryptedData.length);
                 if (cipherMode == CipherMode.GCM)
                     cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, nonce));
                 else if (cipherMode == CipherMode.CHACHA20_POLY1305)
@@ -154,17 +157,28 @@ class ConfigurableCipher implements SymmetricCipher {
                     cipher.init(Cipher.DECRYPT_MODE, key, new ChaCha20ParameterSpec(nonce, 0));
                 yield cipher.doFinal(ciphertext);
             }
-            case MANUAL_PADDING_CBC, MANUAL_PADDING_ECB -> {
-                if (cipherMode == CipherMode.MANUAL_PADDING_CBC) cipher.init(Cipher.DECRYPT_MODE, key, staticIvSpec);
-                else cipher.init(Cipher.DECRYPT_MODE, key);
-                byte[] decryptedData = cipher.doFinal(encryptedData);
-                int padding = decryptedData[decryptedData.length - 1];
-                yield Utils.subArray(decryptedData, 0, decryptedData.length - padding);
+            case MANUAL_PADDING_CBC -> {
+                int blockSize = cipher.getBlockSize();
+                byte[] iv = Utils.subArray(encryptedData, 0, blockSize);
+                byte[] ciphertext = Utils.subArray(encryptedData, blockSize, encryptedData.length);
+                cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+                yield manualUnpad(cipher.doFinal(ciphertext));
+            }
+            case MANUAL_PADDING_ECB -> {
+                cipher.init(Cipher.DECRYPT_MODE, key);
+                yield manualUnpad(cipher.doFinal(encryptedData));
             }
             case NO_AEAD -> {
-                if (staticIvSpec != null) cipher.init(Cipher.DECRYPT_MODE, key, staticIvSpec);
-                else cipher.init(Cipher.DECRYPT_MODE, key);
-                yield cipher.doFinal(encryptedData);
+                int blockSize = cipher.getBlockSize();
+                if (blockSize > 0 && !cipher.getAlgorithm().contains("ECB")) {
+                    byte[] iv = Utils.subArray(encryptedData, 0, blockSize);
+                    byte[] ciphertext = Utils.subArray(encryptedData, blockSize, encryptedData.length);
+                    cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+                    yield cipher.doFinal(ciphertext);
+                } else {
+                    cipher.init(Cipher.DECRYPT_MODE, key);
+                    yield cipher.doFinal(encryptedData);
+                }
             }
         };
     }

@@ -55,13 +55,13 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
         else macMode = MacMode.HMAC;
     }
 
-    private void setMacKey(byte[] sharedSecret) throws InvalidKeyException {
-        byte[] digest = HashUtils.SHA3_512.digest(sharedSecret);
+    private void setMacKey(byte[] keyMaterial) throws InvalidKeyException {
         int keySize = getIntegrityProofSize();
+        byte[] derived = HashUtils.hkdf(keyMaterial, "mac-key", keySize);
         switch (macMode) {
-            case HMAC -> { hMacKey = new SecretKeySpec(digest, 0, keySize, mac.getAlgorithm()); mac.init(hMacKey); }
-            case AESGMAC, AESGMACFAST -> hMacKey = new SecretKeySpec(digest, 0, keySize, "AES");
-            case RC6GMAC, RC6GMACFAST -> hMacKey = new SecretKeySpec(digest, 0, keySize, "RC6");
+            case HMAC -> { hMacKey = new SecretKeySpec(derived, mac.getAlgorithm()); mac.init(hMacKey); }
+            case AESGMAC, AESGMACFAST -> hMacKey = new SecretKeySpec(derived, "AES");
+            case RC6GMAC, RC6GMACFAST -> hMacKey = new SecretKeySpec(derived, "RC6");
         }
     }
 

@@ -93,7 +93,7 @@ public class CipherSuiteFactory {
         if (cipherAlgo != null) {
             try {
                 if ("DPRG".equalsIgnoreCase(cipherAlgo)) {
-                    byte[] keyBytes = Utils.subArray(HashUtils.SHA3_512.digest(keyMaterial), 0, 16);
+                    byte[] keyBytes = HashUtils.hkdf(keyMaterial, "cipher-key", 16);
                     cipher = new MyStreamCipher(keyBytes);
                 } else {
                     cipher = new ConfigurableCipher(cipherAlgo, keyMaterial, keySizeBytes, random);

@@ -1,5 +1,10 @@
 package crypto;
 
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
+import org.bouncycastle.crypto.params.HKDFParameters;
+
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 
 public class HashUtils {
@@ -17,5 +22,13 @@ public class HashUtils {
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static byte[] hkdf(byte[] ikm, String info, int outputLength) {
+        HKDFBytesGenerator hkdf = new HKDFBytesGenerator(new SHA256Digest());
+        hkdf.init(new HKDFParameters(ikm, null, info.getBytes(StandardCharsets.UTF_8)));
+        byte[] output = new byte[outputLength];
+        hkdf.generateBytes(output, 0, outputLength);
+        return output;
     }
 }
