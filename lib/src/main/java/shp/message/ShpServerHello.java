@@ -1,11 +1,9 @@
 package shp.message;
 
 import common.Utils;
-import shp.ShpCryptoSpec;
 import shp.ShpMessage;
 
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.util.List;
 
 public class ShpServerHello {
@@ -28,8 +26,8 @@ public class ShpServerHello {
         this.clientNonceResponse = clientNonceResponse;
     }
 
-    public void sign(ShpCryptoSpec spec) throws GeneralSecurityException {
-        this.signature = spec.sign(bytesToSign());
+    public void setSignature(byte[] signature) {
+        this.signature = signature;
     }
 
     public byte[] serverCertificate() { return serverCertificate; }

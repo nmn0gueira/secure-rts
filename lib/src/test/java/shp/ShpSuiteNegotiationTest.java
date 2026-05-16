@@ -122,7 +122,7 @@ public class ShpSuiteNegotiationTest {
                 spec.getEcdhPublicKeyBytes(),
                 suites,
                 ShpCryptoSpec.generateNonce());
-        hello.sign(spec);
+        hello.setSignature(spec.sign(hello.bytesToSign()));
         return hello;
     }
 

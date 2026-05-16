@@ -141,7 +141,7 @@ public class ShpServerProtocol {
                     selectedSuiteName,
                     serverNonce,
                     clientNonceResponse);
-            hello.sign(cryptoSpec);
+            hello.setSignature(cryptoSpec.sign(hello.bytesToSign()));
 
             LOGGER.info("Sent SERVER_HELLO with suite: " + selectedSuiteName);
             return ShpProtocolResult.waiting(hello.toShpMessage(makeHeader(MsgType.SERVER_HELLO)));

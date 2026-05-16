@@ -65,7 +65,7 @@ public class ShpClientProtocol {
             new ArrayList<>(supportedSuites.keySet()),
             clientNonce
         );
-        hello.sign(cryptoSpec);
+        hello.setSignature(cryptoSpec.sign(hello.bytesToSign()));
 
         LOGGER.info("Sent CLIENT_HELLO with suites: " + new ArrayList<>(supportedSuites.keySet()));
         return hello.toShpMessage(makeHeader(MsgType.CLIENT_HELLO));

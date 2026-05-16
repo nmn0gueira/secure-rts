@@ -35,7 +35,8 @@ class ShpMessagesTest {
                 new byte[] { 3, 4 },
                 List.of("AES/GCM/NoPadding", "ChaCha20-Poly1305"),
                 new byte[] { 5, 6 });
-        hello.sign(testSpec());
+        ShpCryptoSpec spec = testSpec();
+        hello.setSignature(spec.sign(hello.bytesToSign()));
 
         ShpClientHello parsed = ShpClientHello.from(hello.toShpMessage(new byte[] { 1, 0 }));
 
@@ -56,7 +57,8 @@ class ShpMessagesTest {
                 "SHP_AES_256_GCM",
                 new byte[] { 5, 6 },
                 new byte[] { 7, 8 });
-        hello.sign(testSpec());
+        ShpCryptoSpec spec2 = testSpec();
+        hello.setSignature(spec2.sign(hello.bytesToSign()));
 
         ShpServerHello parsed = ShpServerHello.from(hello.toShpMessage(new byte[] { 1, 1 }));
 

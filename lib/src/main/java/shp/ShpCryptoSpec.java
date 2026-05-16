@@ -1,5 +1,6 @@
 package shp;
 
+import crypto.DigitalSignature;
 import crypto.EcdhKeyAgreement;
 import crypto.EcdsaSignature;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -19,16 +20,20 @@ public class ShpCryptoSpec {
     }
 
     private final PrivateKey signingKey;
-    private final EcdsaSignature ecdsaSignature;
+    private final DigitalSignature signer;
     private final EcdhKeyAgreement ecdhKeyAgreement;
 
     private final X509Certificate certificate;
 
     public ShpCryptoSpec(PrivateKey signingKey, X509Certificate certificate) {
+        this(signingKey, certificate, new EcdsaSignature());
+    }
+
+    public ShpCryptoSpec(PrivateKey signingKey, X509Certificate certificate, DigitalSignature signer) {
         this.signingKey = signingKey;
         this.certificate = certificate;
-        ecdsaSignature = new EcdsaSignature();
-        ecdhKeyAgreement = new EcdhKeyAgreement();
+        this.signer = signer;
+        this.ecdhKeyAgreement = new EcdhKeyAgreement();
     }
 
     public byte[] getCertificateBytes() throws GeneralSecurityException {
@@ -38,11 +43,11 @@ public class ShpCryptoSpec {
     }
 
     public byte[] sign(byte[] data) throws GeneralSecurityException {
-        return ecdsaSignature.sign(signingKey, data);
+        return signer.sign(signingKey, data);
     }
 
     public boolean verifySignature(PublicKey publicKey, byte[] data, byte[] signature) throws GeneralSecurityException {
-        return ecdsaSignature.verify(publicKey, data, signature);
+        return signer.verify(publicKey, data, signature);
     }
 
     public byte[] generateSharedSecret(PublicKey peerEcdhPublicKey) throws InvalidKeyException {
