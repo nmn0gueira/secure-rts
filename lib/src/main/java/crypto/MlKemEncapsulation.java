@@ -10,7 +10,7 @@ import org.bouncycastle.crypto.params.MLKEMKeyGenerationParameters;
 import org.bouncycastle.crypto.generators.MLKEMKeyPairGenerator;
 import org.bouncycastle.crypto.params.MLKEMParameters;
 
-import java.security.SecureRandom;
+import common.Utils;
 
 public class MlKemEncapsulation {
 
@@ -19,7 +19,7 @@ public class MlKemEncapsulation {
 
     public MlKemEncapsulation() {
         MLKEMKeyPairGenerator gen = new MLKEMKeyPairGenerator();
-        gen.init(new MLKEMKeyGenerationParameters(new SecureRandom(), MLKEMParameters.ml_kem_768));
+        gen.init(new MLKEMKeyGenerationParameters(Utils.SECURE_RANDOM, MLKEMParameters.ml_kem_768));
         AsymmetricCipherKeyPair kp = gen.generateKeyPair();
         this.publicKey = (MLKEMPublicKeyParameters) kp.getPublic();
         this.privateKey = (MLKEMPrivateKeyParameters) kp.getPrivate();
@@ -37,7 +37,7 @@ public class MlKemEncapsulation {
         MLKEMPublicKeyParameters recipientPubKey =
                 new MLKEMPublicKeyParameters(MLKEMParameters.ml_kem_768, recipientPublicKeyBytes);
         SecretWithEncapsulation result =
-                new MLKEMGenerator(new SecureRandom()).generateEncapsulated(recipientPubKey);
+                new MLKEMGenerator(Utils.SECURE_RANDOM).generateEncapsulated(recipientPubKey);
         return new KemResult(result.getEncapsulation(), result.getSecret());
     }
 

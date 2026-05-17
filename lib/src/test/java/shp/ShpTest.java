@@ -97,7 +97,7 @@ public class ShpTest {
     static Stream<Arguments> suiteConfigs() {
         return Stream.of(
             Arguments.of(
-                "AEAD/GCM — no integrity check",
+                "AEAD/GCM - no integrity check",
                 "CONFIDENTIALITY:AES/GCM/NoPadding\nINTEGRITY:NULL\n"),
             Arguments.of(
                 "AES-CBC + HMAC-SHA256 (MAC integrity)",

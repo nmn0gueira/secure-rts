@@ -6,8 +6,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
-import java.security.SecureRandom;
-
 enum MacMode {
     AESGMAC("AESGMAC"), RC6GMAC("RC6GMAC"),
     AESGMACFAST("AES-GMAC"), RC6GMACFAST("RC6-GMAC"),
@@ -25,7 +23,6 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
     private Mac mac;
     private Key hMacKey;
     private final boolean isMac;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     ConfigurableIntegrityCheck(boolean isMac, String hashAlgorithm, String macAlgorithm, byte[] keyMaterial)
             throws GeneralSecurityException {
@@ -41,7 +38,7 @@ class ConfigurableIntegrityCheck implements IntegrityCheck {
                 case HMAC -> mac.doFinal(data);
                 case AESGMAC, RC6GMAC, AESGMACFAST, RC6GMACFAST -> {
                     byte[] gmacNonce = new byte[12];
-                    secureRandom.nextBytes(gmacNonce);
+                    Utils.SECURE_RANDOM.nextBytes(gmacNonce);
                     Mac freshMac = Mac.getInstance(mac.getAlgorithm());
                     freshMac.init(hMacKey, new IvParameterSpec(gmacNonce));
                     yield Utils.concat(gmacNonce, freshMac.doFinal(data));

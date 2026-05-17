@@ -1,5 +1,6 @@
 package shp.pq;
 
+import common.Utils;
 import crypto.MlDsaSignature;
 import crypto.MlKemEncapsulation;
 
@@ -49,7 +50,7 @@ public class PqShpCryptoSpec {
 
     public static byte[] generateNonce() {
         byte[] nonce = new byte[NONCE_SIZE];
-        new SecureRandom().nextBytes(nonce);
+        Utils.SECURE_RANDOM.nextBytes(nonce);
         return nonce;
     }
 }

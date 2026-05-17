@@ -91,7 +91,7 @@ public class PqShpTest {
         );
     }
 
-    @ParameterizedTest(name = "Hybrid SHP — {0}")
+    @ParameterizedTest(name = "Hybrid SHP - {0}")
     @MethodSource("suiteConfigs")
     void hybridHandshakeCompletes(String label, String suiteContent) throws Exception {
         int port = findFreePort();
@@ -123,7 +123,7 @@ public class PqShpTest {
         assertEquals(UDP_PORT, sOutput.udpPort());
     }
 
-    @ParameterizedTest(name = "Full PQ SHP — {0}")
+    @ParameterizedTest(name = "Full PQ SHP - {0}")
     @MethodSource("suiteConfigs")
     void fullPqHandshakeCompletes(String label, String suiteContent) throws Exception {
         int port = findFreePort();

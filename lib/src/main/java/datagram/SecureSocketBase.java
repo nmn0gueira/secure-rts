@@ -122,7 +122,7 @@ class SecureSocketBase {
             LOGGER.severe("AEAD tag check failed: " + e.getMessage());
             return false;
         } catch (BadPaddingException e) {
-            LOGGER.warning("Invalid padding — possible tampering");
+            LOGGER.warning("Invalid padding - possible tampering");
             return false;
         } catch (GeneralSecurityException e) {
             LOGGER.severe("GeneralSecurityException: " + e.getMessage());

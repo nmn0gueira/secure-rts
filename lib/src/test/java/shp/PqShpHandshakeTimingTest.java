@@ -136,21 +136,21 @@ public class PqShpHandshakeTimingTest {
         );
     }
 
-    @ParameterizedTest(name = "Classic SHP (ECDSA + ECDH) — {0}")
+    @ParameterizedTest(name = "Classic SHP (ECDSA + ECDH) - {0}")
     @MethodSource("suiteConfigs")
     void classicHandshakeTiming(String label, String suiteContent) throws Exception {
         long[] durations = runHandshakes(label, suiteContent, "classic");
         printTimings("Classic  (ECDSA+ECDH)  " + label, durations);
     }
 
-    @ParameterizedTest(name = "Hybrid SHP (ML-DSA + ECDH) — {0}")
+    @ParameterizedTest(name = "Hybrid SHP (ML-DSA + ECDH) - {0}")
     @MethodSource("suiteConfigs")
     void hybridHandshakeTiming(String label, String suiteContent) throws Exception {
         long[] durations = runHandshakes(label, suiteContent, "hybrid");
         printTimings("Hybrid   (ML-DSA+ECDH) " + label, durations);
     }
 
-    @ParameterizedTest(name = "Full PQ SHP (ML-DSA + ML-KEM) — {0}")
+    @ParameterizedTest(name = "Full PQ SHP (ML-DSA + ML-KEM) - {0}")
     @MethodSource("suiteConfigs")
     void fullPqHandshakeTiming(String label, String suiteContent) throws Exception {
         long[] durations = runHandshakes(label, suiteContent, "fullpq");

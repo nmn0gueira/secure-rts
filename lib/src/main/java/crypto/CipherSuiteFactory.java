@@ -25,7 +25,7 @@ public class CipherSuiteFactory {
      */
     public static CipherSuite fromFile(String configPath) {
         Map<CryptoConfigKey, String> config = CryptoConfigParser.parseFile(configPath);
-        return buildFromMap(config, null, new SecureRandom());
+        return buildFromMap(config, null, Utils.SECURE_RANDOM);
     }
 
     /**
@@ -33,7 +33,7 @@ public class CipherSuiteFactory {
      */
     public static CipherSuite fromConfig(String config, byte[] sharedSecret) {
         Map<CryptoConfigKey, String> map = CryptoConfigParser.parseString(config);
-        return buildFromMap(map, sharedSecret, new SecureRandom());
+        return buildFromMap(map, sharedSecret, Utils.SECURE_RANDOM);
     }
 
     public static SymmetricCipher sharedKeyCipher(byte[] key) {

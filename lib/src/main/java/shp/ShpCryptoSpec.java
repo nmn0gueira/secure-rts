@@ -1,5 +1,6 @@
 package shp;
 
+import common.Utils;
 import crypto.DigitalSignature;
 import crypto.EcdhKeyAgreement;
 import crypto.EcdsaSignature;
@@ -69,7 +70,7 @@ public class ShpCryptoSpec {
 
     public static byte[] generateNonce() {
         byte[] nonce = new byte[NONCE_SIZE];
-        new SecureRandom().nextBytes(nonce);
+        Utils.SECURE_RANDOM.nextBytes(nonce);
         return nonce;
     }
 
