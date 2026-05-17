@@ -3,7 +3,6 @@ package crypto;
 import java.io.FileInputStream;
 import java.security.GeneralSecurityException;
 import java.security.Key;
-import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
