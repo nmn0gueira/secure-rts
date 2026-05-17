@@ -101,7 +101,7 @@ Client                            Server
 ## Part 3 PQ-SHP: Post-Quantum Secure Handshake Protocol
 
 Extends Part 2 SHP with post-quantum algorithms. Two variants:
-- **Part 3a (Hybrid):** ML-DSA-65 signatures + ephemeral ECDH key agreement. Only changes the algorithm for signatures.
+- **Part 3a (Hybrid):** ML-DSA-65 signatures + ECDH key agreement. Only changes the algorithm for signatures.
 - **Part 3b (Full PQ):** ML-DSA-65 signatures + ML-KEM-768 key encapsulation.
 
 Part 3b replaces the ECDH key exchange with ML-KEM encapsulation:

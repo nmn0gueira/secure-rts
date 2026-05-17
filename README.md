@@ -17,7 +17,7 @@ secure-rts/
 │   └── src/main/java/server/
 │       ├── Part1Main.java
 │       ├── Part2Main.java
-│       ├── Part3aMain.java      # Hybrid SHP (ML-DSA + ephemeral ECDH)
+│       ├── Part3aMain.java      # Hybrid SHP (ML-DSA + ECDH)
 │       └── Part3bMain.java      # Full PQ SHP (ML-DSA + ML-KEM)
 ├── proxy/                       # Receives stream, decrypts, forwards to media player
 │   ├── crypto/                  # Per-movie crypto configs (Part 1)
@@ -25,7 +25,7 @@ secure-rts/
 │   └── src/main/java/proxy/
 │       ├── Part1Main.java
 │       ├── Part2Main.java
-│       ├── Part3aMain.java      # Hybrid SHP (ML-DSA + ephemeral ECDH)
+│       ├── Part3aMain.java      # Hybrid SHP (ML-DSA + ECDH)
 │       └── Part3bMain.java      # Full PQ SHP (ML-DSA + ML-KEM)
 ├── client/                      # Media player launch scripts (VLC / MPV)
 ├── scripts/                     # PKI setup scripts
@@ -63,7 +63,7 @@ java -cp server/target/server-jar-with-dependencies.jar server.Part2Main <multic
 java -cp proxy/target/proxy-jar-with-dependencies.jar proxy.Part2Main <server-host> <shp-port> <movie>
 ```
 
-### Part 3a Hybrid (ML-DSA + ephemeral ECDH)
+### Part 3a Hybrid (ML-DSA + ECDH)
 ```
 java -cp server/target/server-jar-with-dependencies.jar server.Part3aMain <multicast-addr> <shp-port>
 java -cp proxy/target/proxy-jar-with-dependencies.jar proxy.Part3aMain <server-host> <shp-port> <movie>
