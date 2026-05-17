@@ -1,4 +1,4 @@
-# Part Structur
+# Part Structure
 
 This file should be used as a reference for the files/classes used for each part.
 
@@ -95,3 +95,49 @@ Client                            Server
 | `server/suites/monsters-suites.conf` | Ordered cipher suite list for `monsters.dat` (by server preference)                     |
 | `proxy/cipher-suites.conf` | Cipher suites advertised by the proxy client                      |
 | `scripts/generate-shp-stores.sh` | Generates PKCS12 identity + truststore pairs for server and proxy |
+
+---
+
+## Part 3 PQ-SHP: Post-Quantum Secure Handshake Protocol
+
+Extends Part 2 SHP with post-quantum algorithms. Two variants:
+- **Part 3a (Hybrid):** ML-DSA-65 signatures + ephemeral ECDH key agreement. Only changes the algorithm for signatures.
+- **Part 3b (Full PQ):** ML-DSA-65 signatures + ML-KEM-768 key encapsulation.
+
+Part 3b switches the exchange of ECDH public keys for ML-KEM public keys:
+```
+Client                            Server
+  |--- PQ_CLIENT_HELLO --------> |  cert, KEM pubkey, suite list, nonce, ML-DSA signature
+  |<-- PQ_SERVER_HELLO --------- |  cert, KEM ciphertext, selected suite, nonces, ML-DSA signature
+  |--- CSSP -------------------> |  encrypt(serverNonce+1 | udpPort), [integrity proof]
+```
+
+### Entry points
+| File | Role |
+|---|---|
+| `server/src/main/java/server/Part3aMain.java` | Hybrid SHP server (ML-DSA + ECDH) |
+| `server/src/main/java/server/Part3bMain.java` | Full PQ SHP server (ML-DSA + ML-KEM) |
+| `proxy/src/main/java/proxy/Part3aMain.java` | Hybrid SHP client (ML-DSA + ECDH) |
+| `proxy/src/main/java/proxy/Part3bMain.java` | Full PQ SHP client (ML-DSA + ML-KEM) |
+
+### PQ SHP protocol (`lib/src/main/java/shp/pq/`)
+| File | Role |
+|---|---|
+| `PqShpCryptoSpec.java` | Per-session bundle: ML-DSA signing key + ML-KEM key pair + X.509 certificate |
+| `client/HybridShpClient.java` | Hybrid client TCP lifecycle; reuses `ShpClientProtocol` with `MlDsaSignature` |
+| `client/PqShpClient.java` | Full PQ client TCP lifecycle; drives `PqShpClientProtocol` |
+| `server/HybridShpServer.java` | Hybrid server TCP lifecycle; reuses `ShpServerProtocol` with `MlDsaSignature` |
+| `server/PqShpServer.java` | Full PQ server TCP lifecycle; drives `PqShpServerProtocol` |
+| `protocol/PqShpClientProtocol.java` | Full PQ client-side handshake: ML-DSA verify + ML-KEM encapsulate |
+| `protocol/PqShpServerProtocol.java` | Full PQ server-side handshake: ML-DSA sign + ML-KEM decapsulate |
+
+### Crypto (`lib/src/main/java/crypto/`)
+| File | Role |
+|---|---|
+| `MlDsaSignature.java` | ML-DSA-65 sign / verify via JDK native provider (Java 25+, JEP 497) |
+| `MlKemEncapsulation.java` | ML-KEM-768 key generation, encapsulation, and decapsulation via Bouncy Castle |
+
+### Configuration
+| File | Role |
+|---|---|
+| `scripts/generate-pq-stores.sh` | Generates ML-DSA PKCS12 identity + truststore pairs (requires Java 25+) |
