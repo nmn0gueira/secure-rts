@@ -45,7 +45,7 @@ public class Part3aMain {
             movieSuites.put(movieName, AbstractShpPeer.loadSuites(suitesPath));
         }
 
-        System.out.println("Part 3a (Hybrid ML-DSA + ECDH) server ready. Movies: " + validMovies);
+        System.out.println("Part 3a (Hybrid ML-DSA + ephemeral ECDH) server ready. Movies: " + validMovies);
         System.out.println("Listening for SHP handshakes on TCP port " + shpPort + " ...");
 
         while (true) {

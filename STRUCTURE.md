@@ -104,7 +104,7 @@ Extends Part 2 SHP with post-quantum algorithms. Two variants:
 - **Part 3a (Hybrid):** ML-DSA-65 signatures + ephemeral ECDH key agreement. Only changes the algorithm for signatures.
 - **Part 3b (Full PQ):** ML-DSA-65 signatures + ML-KEM-768 key encapsulation.
 
-Part 3b switches the exchange of ECDH public keys for ML-KEM public keys:
+Part 3b replaces the ECDH key exchange with ML-KEM encapsulation:
 ```
 Client                            Server
   |--- PQ_CLIENT_HELLO --------> |  cert, KEM pubkey, suite list, nonce, ML-DSA signature
